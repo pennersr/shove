@@ -37,7 +37,7 @@ $ curl -X POST 'http://localhost:8322/api/feedback'
 
 Push a notification:
 ```
-$ curl -i --data '{"service": "apns-sandbox", "topic": "com.shove.app", "tokens": ["881becff86cbd215244044d3b9eaaaf6219dfbe2abfb2fe313f3725f4505cb47"]}p' http://localhost:8322/api/push
+$ curl -i --data '{"service": "apns-sandbox", "headers": {"apns-topic": "com.shove.app", "apns-priority": 10}, "tokens": ["881becff86cbd215244044d3b9eaaaf6219dfbe2abfb2fe313f3725f4505cb47"]}' http://localhost:8322/api/push
 
 HTTP/1.1 202 Accepted
 Date: Tue, 07 May 2019 19:00:15 GMT

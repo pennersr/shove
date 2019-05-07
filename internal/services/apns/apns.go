@@ -2,7 +2,6 @@ package apns
 
 import (
 	"context"
-	"errors"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
 	"gitlab.com/pennersr/shove/internal/queue"
@@ -90,11 +89,11 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 }
 
 func (apns *APNS) push(client *apns2.Client, pm types.PushMessage) (resp *apns2.Response, err error) {
-	notification := &apns2.Notification{}
-	notification.DeviceToken = pm.Tokens[0]
-	notification.Topic = pm.Topic
-	notification.Payload = pm.Payload
-	resp, err = client.Push(notification)
+	notif, err := apns.convert(pm)
+	if err != nil {
+		return
+	}
+	resp, err = client.Push(notif)
 	return
 }
 
@@ -106,17 +105,5 @@ func (apns *APNS) Serve(ctx context.Context, q queue.Queue, fc services.Feedback
 	log.Println(apns, "workers started")
 	apns.wg.Wait()
 	log.Println(apns, "workers stopped")
-	return
-}
-
-func (apns *APNS) Validate(pm types.PushMessage) (err error) {
-	if len(pm.Tokens) != 1 {
-		err = errors.New("APNS expects exactly one token")
-		return
-	}
-	if pm.Topic == "" {
-		err = errors.New("APNS requires a topic")
-		return
-	}
 	return
 }

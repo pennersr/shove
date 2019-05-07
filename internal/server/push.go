@@ -8,10 +8,8 @@ import (
 )
 
 type pushRequest struct {
-	Service string          `json:"service"`
-	Tokens  []string        `json:"tokens"`
-	Topic   string          `json:"topic"`
-	Payload json.RawMessage `json:"payload"`
+	Service string `json:"service"`
+	types.PushMessage
 }
 
 func (s *Server) handlePush(w http.ResponseWriter, r *http.Request) {
@@ -33,11 +31,7 @@ func (s *Server) handlePush(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unknown service.", 400)
 		return
 	}
-	msg := types.PushMessage{
-		Tokens:  pr.Tokens,
-		Topic:   pr.Topic,
-		Payload: pr.Payload,
-	}
+	msg := pr.PushMessage
 	err := wrk.push(msg)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
