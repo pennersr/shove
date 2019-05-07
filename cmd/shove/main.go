@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+var apiAddr = flag.String("api-addr", ":8322", "API address to listen to")
 var apnsCertificate = flag.String("apns-certificate-path", "", "APNS certificate path")
 var apnsSandboxCertificate = flag.String("apns-sandbox-certificate-path", "", "APNS sandbox certificate path")
 
@@ -20,7 +21,7 @@ func main() {
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
-	s := server.NewServer(memory.MemoryQueueFactory{})
+	s := server.NewServer(*apiAddr, memory.MemoryQueueFactory{})
 
 	if *apnsCertificate != "" {
 		apns, err := apns.NewAPNS(*apnsCertificate, true)

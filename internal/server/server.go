@@ -18,11 +18,11 @@ type Server struct {
 	feedback     []tokenFeedback
 }
 
-func NewServer(qf queue.QueueFactory) (s *Server) {
+func NewServer(addr string, qf queue.QueueFactory) (s *Server) {
 	mux := http.NewServeMux()
 
 	h := &http.Server{
-		Addr:    ":3123",
+		Addr:    addr,
 		Handler: mux,
 	}
 	s = &Server{
