@@ -69,7 +69,11 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 			log.Println(apns, "error pushing:", err)
 			retry = true
 		} else {
-			log.Printf("%s pushed: %s", apns, resp.Reason)
+			status := resp.Reason
+			if status == "" {
+				status = "OK"
+			}
+			log.Printf("%s pushed: %s", apns, status)
 			sent = resp.Sent()
 			if resp.Reason == apns2.ReasonBadDeviceToken || resp.Reason == apns2.ReasonUnregistered {
 				fc.TokenInvalid(apns.ID(), msg.Tokens[0])
