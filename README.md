@@ -4,21 +4,20 @@
 
 This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which has been steadily serving up to 100M push notifications. But, given that it was still using the binary APNS protocol it was due for an upgrade.
 
-## Design
-
-- Asynchronous: a push client can just fire & forget.
-- Feedback: receive information on invalid device tokens.
-
 ## Features
 
-- APNS suppport.
-- Multiple workers per push services.
+- Asynchronous: a push client can just fire & forget.
+- Feedback: asynchronously receive information on invalid device tokens.
+- Services: APNS.
+- Multiple workers per push service.
 
 ## Roadmap
 
-- Persist the queue in Redis.
 - Add support for FCM.
+- Monitoring via Prometheus statistics.
+- Add support for persisting the queue in Redis.
 - Add support for Web push.
+- Once Redis queueing is in, offer client code to push to Redis directly instead of going via the API.
 
 ## API
 
