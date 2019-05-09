@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"flag"
+	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/queue/memory"
+	"gitlab.com/pennersr/shove/internal/queue/redis"
 	"gitlab.com/pennersr/shove/internal/server"
 	"gitlab.com/pennersr/shove/internal/services/apns"
 	"log"
@@ -15,13 +17,23 @@ import (
 var apiAddr = flag.String("api-addr", ":8322", "API address to listen to")
 var apnsCertificate = flag.String("apns-certificate-path", "", "APNS certificate path")
 var apnsSandboxCertificate = flag.String("apns-sandbox-certificate-path", "", "APNS sandbox certificate path")
+var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
 
 func main() {
 	flag.Parse()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
-	s := server.NewServer(*apiAddr, memory.MemoryQueueFactory{})
+
+	var qf queue.QueueFactory
+	if *redisURL == "" {
+		log.Println("Using non-persistent in-memory queue")
+		qf = memory.MemoryQueueFactory{}
+	} else {
+		log.Println("Using Redis queue at", *redisURL)
+		qf = redis.NewQueueFactory(*redisURL)
+	}
+	s := server.NewServer(*apiAddr, qf)
 
 	if *apnsCertificate != "" {
 		apns, err := apns.NewAPNS(*apnsCertificate, true)

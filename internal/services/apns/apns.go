@@ -82,11 +82,11 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 		}
 		if sent || !retry {
 			if err = q.Remove(qm); err != nil {
-				log.Println(apns, "error removing from the queue")
+				log.Println(apns, "error removing from the queue:", err)
 			}
 		} else {
 			if err = q.Requeue(qm); err != nil {
-				log.Println(apns, "error putting back in the queue")
+				log.Println(apns, "error putting back in the queue:", err)
 			}
 		}
 	}

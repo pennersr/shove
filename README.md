@@ -10,14 +10,14 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 - Feedback: asynchronously receive information on invalid device tokens.
 - Services: APNS.
 - Multiple workers per push service.
+- Queueing: both in-memory and persistent via Redis.
 
 ## Roadmap
 
 - Add support for FCM.
 - Monitoring via Prometheus statistics.
-- Add support for persisting the queue in Redis.
 - Add support for Web push.
-- Once Redis queueing is in, offer client code to push to Redis directly instead of going via the API.
+- Push while shove is offline: offer client code to push to Redis directly instead of going via the API.
 
 ## API
 
