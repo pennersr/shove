@@ -27,7 +27,12 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 - https://github.com/mercari/gaurun/issues/115
 
 
-## API
+## Usage
+
+Running:
+```
+shove -fcm-api-key $FCM_API_KEY -apns-certificate-path /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-path /etc/shove/apns/sandbox/bundle.pem -api-addr localhost:8322 -queue-redis redis://redis:6379
+```
 
 Receive feedback:
 ```
