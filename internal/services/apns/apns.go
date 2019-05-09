@@ -2,7 +2,6 @@ package apns
 
 import (
 	"context"
-	"errors"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
 	"gitlab.com/pennersr/shove/internal/queue"

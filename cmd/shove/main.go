@@ -58,7 +58,8 @@ func main() {
 		}
 	}()
 	<-stop
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	s.Shutdown(ctx)
 	log.Println("Exiting")
 }

@@ -18,6 +18,8 @@ type redisQueue struct {
 	id           string
 	pool         *redis.Pool
 	shuttingDown bool
+	waitingList  string
+	pendingList  string
 }
 
 func NewQueueFactory(url string) queue.QueueFactory {
@@ -40,15 +42,8 @@ func (rq *redisQueue) Queue(msg types.PushMessage) (err error) {
 	}
 	conn := rq.pool.Get()
 	defer conn.Close()
-	l, _ := rq.listNames()
-	_, err = conn.Do("RPUSH", l, marshalled)
+	_, err = conn.Do("RPUSH", rq.waitingList, marshalled)
 	return nil
-}
-
-func (rq *redisQueue) listNames() (l, pl string) {
-	l = "shove:" + rq.id
-	pl = l + ":pending"
-	return
 }
 
 func (rq *redisQueue) Shutdown() (err error) {
@@ -61,13 +56,12 @@ func (rq *redisQueue) Remove(qm queue.QueuedMessage) (err error) {
 	rqm := qm.(*redisQueuedMessage)
 	conn := rq.pool.Get()
 	defer conn.Close()
-	_, pl := rq.listNames()
-	n, err := redis.Int(conn.Do("LREM", pl, 1, rqm.raw))
+	n, err := redis.Int(conn.Do("LREM", rq.pendingList, 1, rqm.raw))
 	if err != nil {
 		return
 	}
 	if n == 0 {
-		log.Println("Push message already gone from pending list", pl)
+		log.Println("Push message already gone from pending list", rq.pendingList)
 	}
 	return nil
 }
@@ -76,15 +70,13 @@ func (rq *redisQueue) Requeue(qm queue.QueuedMessage) (err error) {
 	rqm := qm.(*redisQueuedMessage)
 	conn := rq.pool.Get()
 	defer conn.Close()
-	l, pl := rq.listNames()
-
 	if err = conn.Send("MULTI"); err != nil {
 		return
 	}
-	if err = conn.Send("LREM", pl, 1, rqm.raw); err != nil {
+	if err = conn.Send("LREM", rq.pendingList, 1, rqm.raw); err != nil {
 		return
 	}
-	if err = conn.Send("RPUSH", l, rqm.raw); err != nil {
+	if err = conn.Send("RPUSH", rq.waitingList, rqm.raw); err != nil {
 		return
 	}
 	_, err = conn.Do("EXEC")
@@ -94,11 +86,10 @@ func (rq *redisQueue) Requeue(qm queue.QueuedMessage) (err error) {
 func (rq *redisQueue) Get(ctx context.Context) (qm queue.QueuedMessage, err error) {
 	conn := rq.pool.Get()
 	defer conn.Close()
-	l, pl := rq.listNames()
 
 	var raw []byte
 	for ctx.Err() == nil {
-		raw, err = redis.Bytes(conn.Do("BRPOPLPUSH", l, pl, 2))
+		raw, err = redis.Bytes(conn.Do("BRPOPLPUSH", rq.waitingList, rq.pendingList, 2))
 		if err == redis.ErrNil {
 			err = nil
 			continue
@@ -120,9 +111,8 @@ func (rq *redisQueue) Get(ctx context.Context) (qm queue.QueuedMessage, err erro
 func (rq *redisQueue) recover() (err error) {
 	conn := rq.pool.Get()
 	defer conn.Close()
-	l, pl := rq.listNames()
 	for {
-		_, err := redis.Bytes(conn.Do("RPOPLPUSH", pl, l))
+		_, err := redis.Bytes(conn.Do("RPOPLPUSH", rq.pendingList, rq.waitingList))
 		if err == redis.ErrNil {
 			log.Println("No more", rq.id, "push notifications to recover")
 			break
@@ -140,6 +130,7 @@ func (rqf *redisQueueFactory) NewQueue(id string) (q queue.Queue, err error) {
 		id:   id,
 		pool: rqf.pool,
 	}
+	rq.waitingList, rq.pendingList = ListNames(id)
 	err = rq.recover()
 	if err != nil {
 		return

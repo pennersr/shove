@@ -12,13 +12,13 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 - Multiple workers per push service.
 - Queueing: both in-memory and persistent via Redis.
 - Exponential back-off in case of failure.
+- Less moving parts: when using Redis, you can push directly to the queue, bypassing the need for the Shove server to be up and running.
 
 ## Roadmap
 
 - Add support for FCM.
 - Monitoring via Prometheus statistics.
 - Add support for Web push.
-- Push while shove is offline: offer client code to push to Redis directly instead of going via the API.
 
 
 ## Why?
