@@ -2,11 +2,10 @@ package queue
 
 import (
 	"context"
-	"gitlab.com/pennersr/shove/internal/types"
 )
 
 type Queue interface {
-	Queue(types.PushMessage) error
+	Queue([]byte) error
 	Get(ctx context.Context) (QueuedMessage, error)
 	Remove(QueuedMessage) error
 	Requeue(QueuedMessage) error
@@ -14,7 +13,7 @@ type Queue interface {
 }
 
 type QueuedMessage interface {
-	Message() types.PushMessage
+	Message() []byte
 }
 
 type QueueFactory interface {

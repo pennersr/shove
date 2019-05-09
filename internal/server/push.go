@@ -1,38 +1,31 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
-	"gitlab.com/pennersr/shove/internal/types"
+	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
-type pushRequest struct {
-	Service string `json:"service"`
-	types.PushMessage
-}
-
 func (s *Server) handlePush(w http.ResponseWriter, r *http.Request) {
+	service := strings.TrimPrefix(r.URL.Path, "/api/push/")
+	wrk, ok := s.workers[service]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
 	if r.Method != "POST" {
 		http.Error(w, "Invalid request method.", 405)
 		return
 	}
-	var pr pushRequest
-	if err := json.NewDecoder(r.Body).Decode(&pr); err != nil {
-		http.Error(w, err.Error(), 400)
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if len(pr.Tokens) == 0 {
-		http.Error(w, "No tokens specified.", 400)
-		return
-	}
-	wrk, ok := s.workers[pr.Service]
-	if !ok {
-		http.Error(w, "Unknown service.", 400)
-		return
-	}
-	msg := pr.PushMessage
-	err := wrk.push(msg)
+
+	err = wrk.push(body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return

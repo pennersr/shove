@@ -4,7 +4,6 @@ import (
 	"context"
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
-	"gitlab.com/pennersr/shove/internal/types"
 )
 
 type worker struct {
@@ -25,7 +24,7 @@ func newWorker(pp services.PushService, queue queue.Queue) (w *worker, err error
 	return
 }
 
-func (w *worker) push(msg types.PushMessage) (err error) {
+func (w *worker) push(msg []byte) (err error) {
 	if err = w.service.Validate(msg); err != nil {
 		return
 	}

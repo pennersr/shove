@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/gomodule/redigo/redis"
 	"gitlab.com/pennersr/shove/internal/queue"
-	"gitlab.com/pennersr/shove/internal/types"
 	"log"
 	"time"
 )
@@ -35,14 +34,10 @@ func NewQueueFactory(url string) queue.QueueFactory {
 	return qf
 }
 
-func (rq *redisQueue) Queue(msg types.PushMessage) (err error) {
-	marshalled, err := msg.Marshal()
-	if err != nil {
-		return
-	}
+func (rq *redisQueue) Queue(msg []byte) (err error) {
 	conn := rq.pool.Get()
 	defer conn.Close()
-	_, err = conn.Do("RPUSH", rq.waitingList, marshalled)
+	_, err = conn.Do("RPUSH", rq.waitingList, msg)
 	return nil
 }
 
@@ -53,10 +48,9 @@ func (rq *redisQueue) Shutdown() (err error) {
 }
 
 func (rq *redisQueue) Remove(qm queue.QueuedMessage) (err error) {
-	rqm := qm.(*redisQueuedMessage)
 	conn := rq.pool.Get()
 	defer conn.Close()
-	n, err := redis.Int(conn.Do("LREM", rq.pendingList, 1, rqm.raw))
+	n, err := redis.Int(conn.Do("LREM", rq.pendingList, 1, qm.Message()))
 	if err != nil {
 		return
 	}
@@ -67,16 +61,15 @@ func (rq *redisQueue) Remove(qm queue.QueuedMessage) (err error) {
 }
 
 func (rq *redisQueue) Requeue(qm queue.QueuedMessage) (err error) {
-	rqm := qm.(*redisQueuedMessage)
 	conn := rq.pool.Get()
 	defer conn.Close()
 	if err = conn.Send("MULTI"); err != nil {
 		return
 	}
-	if err = conn.Send("LREM", rq.pendingList, 1, rqm.raw); err != nil {
+	if err = conn.Send("LREM", rq.pendingList, 1, qm.Message()); err != nil {
 		return
 	}
-	if err = conn.Send("RPUSH", rq.waitingList, rqm.raw); err != nil {
+	if err = conn.Send("RPUSH", rq.waitingList, qm.Message()); err != nil {
 		return
 	}
 	_, err = conn.Do("EXEC")
@@ -97,11 +90,7 @@ func (rq *redisQueue) Get(ctx context.Context) (qm queue.QueuedMessage, err erro
 		if err != nil {
 			return
 		}
-		rqm := &redisQueuedMessage{raw: raw}
-		rqm.msg, err = types.UnmarshalPushMessage(raw)
-		if err == nil {
-			qm = rqm
-		}
+		qm = redisQueuedMessage(raw)
 		return
 	}
 	err = errors.New("queue shutting down")

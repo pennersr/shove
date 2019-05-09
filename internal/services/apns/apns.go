@@ -6,10 +6,8 @@ import (
 	"github.com/sideshow/apns2/certificate"
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
-	"gitlab.com/pennersr/shove/internal/types"
 	"log"
 	"math"
-	"runtime"
 	"sync"
 	"time"
 )
@@ -26,7 +24,7 @@ func NewAPNS(pemFile string, production bool) (apns *APNS, err error) {
 		return
 	}
 	apns = &APNS{production: production}
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < 4; i++ {
 		client := apns2.NewClient(cert)
 		if production {
 			client.Production()
@@ -64,10 +62,17 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 			log.Println(apns, "error reading from queue:", err)
 			return
 		}
-		msg := qm.Message()
-		resp, err := apns.push(client, msg)
 		sent := false
 		retry := false
+		msg := qm.Message()
+		notif, err := apns.convert(msg)
+		if err != nil {
+			log.Println(apns, "bad message:", err)
+			apns.remove(q, qm)
+			continue
+		}
+		t := time.Now()
+		resp, err := client.Push(notif)
 		if err != nil {
 			log.Println(apns, "error pushing:", err)
 			retry = true
@@ -76,17 +81,15 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 			if status == "" {
 				status = "OK"
 			}
-			log.Printf("%s pushed: %s", apns, status)
+			log.Printf("%s pushed (%s), took %s", apns, status, time.Now().Sub(t))
 			sent = resp.Sent()
 			if resp.Reason == apns2.ReasonBadDeviceToken || resp.Reason == apns2.ReasonUnregistered {
-				fc.TokenInvalid(apns.ID(), msg.Tokens[0])
+				fc.TokenInvalid(apns.ID(), notif.DeviceToken)
 			}
 			retry = resp.StatusCode >= 500
 		}
 		if sent || !retry {
-			if err = q.Remove(qm); err != nil {
-				log.Println(apns, "error removing from the queue:", err)
-			}
+			apns.remove(q, qm)
 		} else {
 			if err = q.Requeue(qm); err != nil {
 				log.Println(apns, "error putting back in the queue:", err)
@@ -103,21 +106,18 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 	}
 }
 
+func (apns *APNS) remove(q queue.Queue, qm queue.QueuedMessage) {
+	if err := q.Remove(qm); err != nil {
+		log.Println(apns, "error removing from the queue:", err)
+	}
+}
+
 func backoff(ctx context.Context, failureCount int) {
 	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
 	log.Printf("Backing off for %s", sleep)
 	ctx, cancel := context.WithTimeout(ctx, sleep)
 	defer cancel()
 	<-ctx.Done()
-}
-
-func (apns *APNS) push(client *apns2.Client, pm types.PushMessage) (resp *apns2.Response, err error) {
-	notif, err := apns.convert(pm)
-	if err != nil {
-		return
-	}
-	resp, err = client.Push(notif)
-	return
 }
 
 func (apns *APNS) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {

@@ -8,6 +8,7 @@ import (
 	"gitlab.com/pennersr/shove/internal/queue/redis"
 	"gitlab.com/pennersr/shove/internal/server"
 	"gitlab.com/pennersr/shove/internal/services/apns"
+	"gitlab.com/pennersr/shove/internal/services/fcm"
 	"log"
 	"os"
 	"os/signal"
@@ -17,6 +18,7 @@ import (
 var apiAddr = flag.String("api-addr", ":8322", "API address to listen to")
 var apnsCertificate = flag.String("apns-certificate-path", "", "APNS certificate path")
 var apnsSandboxCertificate = flag.String("apns-sandbox-certificate-path", "", "APNS sandbox certificate path")
+var fcmAPIKey = flag.String("fcm-api-key", "", "FCM API key")
 var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
 
 func main() {
@@ -49,6 +51,14 @@ func main() {
 			log.Fatal("Error setting up APNS sandbox service:", err)
 		}
 		s.AddService(apns)
+	}
+
+	if *fcmAPIKey != "" {
+		fcm, err := fcm.NewFCM(*fcmAPIKey)
+		if err != nil {
+			log.Fatal("Error setting up FCM service:", err)
+		}
+		s.AddService(fcm)
 	}
 
 	go func() {

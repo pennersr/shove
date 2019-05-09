@@ -31,7 +31,7 @@ func NewServer(addr string, qf queue.QueueFactory) (s *Server) {
 		workers:      make(map[string]*worker),
 		feedback:     make([]tokenFeedback, 0),
 	}
-	mux.HandleFunc("/api/push", s.handlePush)
+	mux.HandleFunc("/api/push/", s.handlePush)
 	mux.HandleFunc("/api/feedback", s.handleFeedback)
 	return s
 }

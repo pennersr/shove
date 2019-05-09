@@ -8,7 +8,7 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 
 - Asynchronous: a push client can just fire & forget.
 - Feedback: asynchronously receive information on invalid device tokens.
-- Services: APNS.
+- Services: APNS, FCM.
 - Multiple workers per push service.
 - Queueing: both in-memory and persistent via Redis.
 - Exponential back-off in case of failure.
@@ -16,7 +16,6 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 
 ## Roadmap
 
-- Add support for FCM.
 - Monitoring via Prometheus statistics.
 - Add support for Web push.
 
@@ -43,9 +42,21 @@ $ curl -X POST 'http://localhost:8322/api/feedback'
 }
 ```
 
-Push a notification:
+Push an APNS notification:
 ```
-$ curl -i --data '{"service": "apns-sandbox", "headers": {"apns-topic": "com.shove.app", "apns-priority": 10}, "tokens": ["881becff86cbd215244044d3b9eaaaf6219dfbe2abfb2fe313f3725f4505cb47"]}' http://localhost:8322/api/push
+$ curl  -i  --data '{"service": "apns", "headers": {"apns-priority": 10, "apns-topic": "com.shove.app"}, "payload": {"aps": { "alert": "hi"}}, "token": "81b8ecff8cb6d22154404d43b9aeaaf6219dfbef2abb2fe313f3725f4505cb47"}' http://localhost:8322/api/push/apns
+
+HTTP/1.1 202 Accepted
+Date: Tue, 07 May 2019 19:00:15 GMT
+Content-Length: 2
+Content-Type: text/plain; charset=utf-8
+
+OK
+```
+
+Push an FCM notification:
+```
+$ curl  -i  --data '{"to": "feE8R6apOdA:AA91PbGHMX5HUoB-tbcqBO_e75NbiOc2AiFbGL3rrYtc99Z5ejbGmCCvOhKW5liqfOzRGOXxto5l7y6b_0dCc-AQ2_bXOcDkcPZgsXGbZvmEjaZA72DfVkZ2pfRrcpcc_9IiiRT5NYC", "notification": {"title": "Hello"}}' http://localhost:8322/api/push/fcm
 
 HTTP/1.1 202 Accepted
 Date: Tue, 07 May 2019 19:00:15 GMT

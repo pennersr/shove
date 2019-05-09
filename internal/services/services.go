@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"gitlab.com/pennersr/shove/internal/queue"
-	"gitlab.com/pennersr/shove/internal/types"
 )
 
 type FeedbackCollector interface {
@@ -16,5 +15,5 @@ type PushService interface {
 	fmt.Stringer
 	ID() string
 	Serve(ctx context.Context, q queue.Queue, fc FeedbackCollector) error
-	Validate(types.PushMessage) error
+	Validate([]byte) error
 }

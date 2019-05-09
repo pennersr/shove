@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"gitlab.com/pennersr/shove/internal/queue"
-	"gitlab.com/pennersr/shove/internal/types"
 	"sync"
 )
 
@@ -17,7 +16,7 @@ type memoryQueue struct {
 	shuttingDown bool
 }
 
-func (mq *memoryQueue) Queue(msg types.PushMessage) (err error) {
+func (mq *memoryQueue) Queue(msg []byte) (err error) {
 	mq.lock.Lock()
 	qm := &memoryQueuedMessage{
 		msg: msg,

@@ -1,15 +1,11 @@
 package memory
 
-import (
-	"gitlab.com/pennersr/shove/internal/types"
-)
-
 type memoryQueuedMessage struct {
-	msg     types.PushMessage
+	msg     []byte
 	pending bool
 	idx     int
 }
 
-func (qm *memoryQueuedMessage) Message() types.PushMessage {
+func (qm *memoryQueuedMessage) Message() []byte {
 	return qm.msg
 }

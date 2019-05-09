@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -36,10 +37,12 @@ func (s *Server) TokenInvalid(serviceID, token string) {
 	s.feedbackLock.Lock()
 	s.feedback = append(s.feedback, tokenFeedback{serviceID, token, "", "invalid"})
 	s.feedbackLock.Unlock()
-
+	log.Println("Invalid", serviceID, "token:", token)
 }
+
 func (s *Server) ReplaceToken(serviceID, token, replacement string) {
 	s.feedbackLock.Lock()
 	s.feedback = append(s.feedback, tokenFeedback{serviceID, token, replacement, "replaced"})
 	s.feedbackLock.Unlock()
+	log.Println(serviceID, "token replaced")
 }
