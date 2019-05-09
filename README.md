@@ -20,6 +20,14 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 - Add support for Web push.
 - Push while shove is offline: offer client code to push to Redis directly instead of going via the API.
 
+
+## Why?
+
+- https://github.com/appleboy/gorush/issues/386#issuecomment-479191179
+
+- https://github.com/mercari/gaurun/issues/115
+
+
 ## API
 
 Receive feedback:
