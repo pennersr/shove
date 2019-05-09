@@ -11,6 +11,7 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 - Services: APNS.
 - Multiple workers per push service.
 - Queueing: both in-memory and persistent via Redis.
+- Exponential back-off in case of failure.
 
 ## Roadmap
 

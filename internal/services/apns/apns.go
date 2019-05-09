@@ -2,14 +2,17 @@ package apns
 
 import (
 	"context"
+	"errors"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
 	"gitlab.com/pennersr/shove/internal/types"
 	"log"
+	"math"
 	"runtime"
 	"sync"
+	"time"
 )
 
 type APNS struct {
@@ -55,6 +58,7 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 	defer func() {
 		apns.wg.Done()
 	}()
+	failureCount := 0
 	for ctx.Err() == nil {
 		qm, err := q.Get(ctx)
 		if err != nil {
@@ -89,7 +93,23 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 				log.Println(apns, "error putting back in the queue:", err)
 			}
 		}
+		if retry {
+			backoff(ctx, failureCount)
+			failureCount++
+
+		} else {
+			failureCount = 0
+
+		}
 	}
+}
+
+func backoff(ctx context.Context, failureCount int) {
+	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
+	log.Printf("Backing off for %s", sleep)
+	ctx, cancel := context.WithTimeout(ctx, sleep)
+	defer cancel()
+	<-ctx.Done()
 }
 
 func (apns *APNS) push(client *apns2.Client, pm types.PushMessage) (resp *apns2.Response, err error) {
