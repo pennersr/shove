@@ -12,12 +12,14 @@ import (
 	"time"
 )
 
+// APNS ...
 type APNS struct {
 	clients    []*apns2.Client
 	production bool
 	wg         sync.WaitGroup
 }
 
+// NewAPNS ...
 func NewAPNS(pemFile string, production bool) (apns *APNS, err error) {
 	cert, err := certificate.FromPemFile(pemFile, "")
 	if err != nil {
@@ -36,6 +38,7 @@ func NewAPNS(pemFile string, production bool) (apns *APNS, err error) {
 	return
 }
 
+// ID ...
 func (apns *APNS) ID() string {
 	if apns.production {
 		return "apns"
@@ -44,6 +47,7 @@ func (apns *APNS) ID() string {
 
 }
 
+// String ...
 func (apns *APNS) String() string {
 	if apns.production {
 		return "APNS"
@@ -62,8 +66,7 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 			log.Println(apns, "error reading from queue:", err)
 			return
 		}
-		sent := false
-		retry := false
+		var sent, retry bool
 		msg := qm.Message()
 		notif, err := apns.convert(msg)
 		if err != nil {
@@ -120,6 +123,7 @@ func backoff(ctx context.Context, failureCount int) {
 	<-ctx.Done()
 }
 
+// Serve ...
 func (apns *APNS) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
 	apns.wg.Add(len(apns.clients))
 	for id, client := range apns.clients {

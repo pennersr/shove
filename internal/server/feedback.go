@@ -33,6 +33,7 @@ func (s *Server) handleFeedback(w http.ResponseWriter, r *http.Request) {
 	w.Write(j)
 }
 
+// TokenInvalid ...
 func (s *Server) TokenInvalid(serviceID, token string) {
 	s.feedbackLock.Lock()
 	s.feedback = append(s.feedback, tokenFeedback{serviceID, token, "", "invalid"})
@@ -40,6 +41,7 @@ func (s *Server) TokenInvalid(serviceID, token string) {
 	log.Println("Invalid", serviceID, "token:", token)
 }
 
+// ReplaceToken ...
 func (s *Server) ReplaceToken(serviceID, token, replacement string) {
 	s.feedbackLock.Lock()
 	s.feedback = append(s.feedback, tokenFeedback{serviceID, token, replacement, "replaced"})

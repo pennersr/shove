@@ -6,11 +6,13 @@ import (
 	"gitlab.com/pennersr/shove/internal/queue"
 )
 
+// FeedbackCollector ...
 type FeedbackCollector interface {
 	TokenInvalid(serviceID, token string)
 	ReplaceToken(serviceID, token, replacement string)
 }
 
+// PushService ...
 type PushService interface {
 	fmt.Stringer
 	ID() string

@@ -21,6 +21,7 @@ type redisQueue struct {
 	pendingList  string
 }
 
+// NewQueueFactory ...
 func NewQueueFactory(url string) queue.QueueFactory {
 	qf := &redisQueueFactory{
 		pool: &redis.Pool{
@@ -38,7 +39,7 @@ func (rq *redisQueue) Queue(msg []byte) (err error) {
 	conn := rq.pool.Get()
 	defer conn.Close()
 	_, err = conn.Do("RPUSH", rq.waitingList, msg)
-	return nil
+	return
 }
 
 func (rq *redisQueue) Shutdown() (err error) {

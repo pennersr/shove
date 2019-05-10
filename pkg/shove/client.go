@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Client ...
 type Client interface {
 	PushRaw(serviceID string, data []byte) (err error)
 }
@@ -14,6 +15,7 @@ type redisClient struct {
 	pool *redis.Pool
 }
 
+// NewRedisClient ...
 func NewRedisClient(redisURL string) Client {
 	rc := &redisClient{
 		pool: &redis.Pool{
@@ -27,6 +29,7 @@ func NewRedisClient(redisURL string) Client {
 	return rc
 }
 
+// PushRaw ...
 func (rc *redisClient) PushRaw(id string, data []byte) (err error) {
 	waitingList, _ := shvredis.ListNames(id)
 	conn := rc.pool.Get()

@@ -61,6 +61,7 @@ func (apns *APNS) convert(data []byte) (notif *apns2.Notification, err error) {
 	return
 }
 
+// Validate ...
 func (apns *APNS) Validate(data []byte) (err error) {
 	_, err = apns.convert(data)
 	return

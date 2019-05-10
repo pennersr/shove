@@ -9,6 +9,7 @@ import (
 	"sync"
 )
 
+// Server ...
 type Server struct {
 	server       *http.Server
 	shuttingDown bool
@@ -18,6 +19,7 @@ type Server struct {
 	feedback     []tokenFeedback
 }
 
+// NewServer ...
 func NewServer(addr string, qf queue.QueueFactory) (s *Server) {
 	mux := http.NewServeMux()
 
@@ -36,6 +38,7 @@ func NewServer(addr string, qf queue.QueueFactory) (s *Server) {
 	return s
 }
 
+// Serve ...
 func (s *Server) Serve() (err error) {
 	log.Println("Shove server started")
 	err = s.server.ListenAndServe()
@@ -45,6 +48,7 @@ func (s *Server) Serve() (err error) {
 	return
 }
 
+// Shutdown ...
 func (s *Server) Shutdown(ctx context.Context) (err error) {
 	s.shuttingDown = true
 	s.server.Shutdown(ctx)
@@ -62,6 +66,7 @@ func (s *Server) Shutdown(ctx context.Context) (err error) {
 	return
 }
 
+// AddService ...
 func (s *Server) AddService(pp services.PushService) (err error) {
 	log.Printf("Initializing %s service", pp)
 	q, err := s.queueFactory.NewQueue(pp.ID())

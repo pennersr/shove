@@ -27,6 +27,7 @@ func (fcm *FCM) convert(data []byte) (*fcmMessage, error) {
 	return &msg, nil
 }
 
+// Validate ...
 func (fcm *FCM) Validate(data []byte) error {
 	_, err := fcm.convert(data)
 	return err

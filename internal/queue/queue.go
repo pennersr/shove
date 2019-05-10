@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// Queue ...
 type Queue interface {
 	Queue([]byte) error
 	Get(ctx context.Context) (QueuedMessage, error)
@@ -12,10 +13,12 @@ type Queue interface {
 	Shutdown() error
 }
 
+// QueuedMessage ...
 type QueuedMessage interface {
 	Message() []byte
 }
 
+// QueueFactory ...
 type QueueFactory interface {
 	NewQueue(id string) (Queue, error)
 }

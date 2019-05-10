@@ -13,12 +13,14 @@ import (
 	"time"
 )
 
+// FCM ...
 type FCM struct {
 	transport *http.Transport
 	wg        sync.WaitGroup
 	apiKey    string
 }
 
+// NewFCM ...
 func NewFCM(apiKey string) (fcm *FCM, err error) {
 	fcm = &FCM{
 		apiKey: apiKey,
@@ -30,10 +32,12 @@ func NewFCM(apiKey string) (fcm *FCM, err error) {
 	return
 }
 
+// ID ...
 func (fcm *FCM) ID() string {
 	return "fcm"
 }
 
+// String ...
 func (fcm *FCM) String() string {
 	return "FCM"
 }
@@ -87,6 +91,10 @@ type fcmResponse struct {
 
 func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector) (done, retry bool) {
 	req, err := http.NewRequest("POST", "https://fcm.googleapis.com/fcm/send", bytes.NewBuffer(data))
+	if err != nil {
+		log.Println(fcm, "error creating request:", err)
+		return false, true
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "key="+fcm.apiKey)
 
@@ -159,6 +167,7 @@ func (fcm *FCM) remove(q queue.Queue, qm queue.QueuedMessage) {
 	}
 }
 
+// Serve ...
 func (fcm *FCM) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
 	for i := 0; i < 4; i++ {
 		go fcm.serveClient(ctx, q, fc)

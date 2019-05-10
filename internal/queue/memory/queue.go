@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+// MemoryQueueFactory ...
 type MemoryQueueFactory struct{}
 
 type memoryQueue struct {
@@ -77,6 +78,7 @@ func (mq *memoryQueue) Get(ctx context.Context) (queue.QueuedMessage, error) {
 	return nil, errors.New("queue shut down")
 }
 
+// NewQueue ...
 func (mqf MemoryQueueFactory) NewQueue(id string) (q queue.Queue, err error) {
 	mq := &memoryQueue{}
 	mq.cond = sync.NewCond(&mq.lock)
