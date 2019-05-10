@@ -76,6 +76,7 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 		}
 		t := time.Now()
 		resp, err := client.Push(notif)
+		duration := time.Now().Sub(t)
 		if err != nil {
 			log.Println(apns, "error pushing:", err)
 			retry = true
@@ -84,13 +85,14 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 			if status == "" {
 				status = "OK"
 			}
-			log.Printf("%s pushed (%s), took %s", apns, status, time.Now().Sub(t))
+			log.Printf("%s pushed (%s), took %s", apns, status, duration)
 			sent = resp.Sent()
 			if resp.Reason == apns2.ReasonBadDeviceToken || resp.Reason == apns2.ReasonUnregistered {
 				fc.TokenInvalid(apns.ID(), notif.DeviceToken)
 			}
 			retry = resp.StatusCode >= 500
 		}
+		fc.CountPush(apns.ID(), sent, duration)
 		if sent || !retry {
 			apns.remove(q, qm)
 		} else {

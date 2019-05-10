@@ -15,10 +15,10 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 - Queueing: both in-memory and persistent via Redis.
 - Exponential back-off in case of failure.
 - Less moving parts: when using Redis, you can push directly to the queue, bypassing the need for the Shove server to be up and running.
+- Prometheus support
 
 ## Roadmap
 
-- Monitoring via Prometheus statistics.
 - Add support for Web push.
 
 

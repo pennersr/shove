@@ -90,6 +90,9 @@ type fcmResponse struct {
 }
 
 func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector) (done, retry bool) {
+	startedAt := time.Now()
+	var success bool
+
 	req, err := http.NewRequest("POST", "https://fcm.googleapis.com/fcm/send", bytes.NewBuffer(data))
 	if err != nil {
 		log.Println(fcm, "error creating request:", err)
@@ -101,14 +104,18 @@ func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector
 	client := &http.Client{
 		Timeout:   time.Duration(15 * time.Second),
 		Transport: fcm.transport}
-	t := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println(fcm, "error posting:", err)
 		return false, true
 	}
-	defer resp.Body.Close()
+	duration := time.Now().Sub(startedAt)
 
+	defer func() {
+		fc.CountPush(fcm.ID(), success, duration)
+	}()
+
+	defer resp.Body.Close()
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 		log.Println(fcm, "rejected, status code:", resp.StatusCode)
 		return true, false
@@ -128,7 +135,7 @@ func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector
 	if len(regIDs) == 0 {
 		regIDs = append(regIDs, msg.To)
 	}
-	log.Println(fcm, "pushed, took", time.Now().Sub(t))
+	log.Println(fcm, "pushed, took", duration)
 	for i, fb := range fr.Results {
 		switch fb.Error {
 		case "":
@@ -150,6 +157,7 @@ func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector
 			log.Println(fcm, "error sending:", fb.Error)
 		}
 	}
+	success = true
 	return true, false
 }
 

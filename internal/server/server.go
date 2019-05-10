@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
 	"log"
@@ -35,6 +36,7 @@ func NewServer(addr string, qf queue.QueueFactory) (s *Server) {
 	}
 	mux.HandleFunc("/api/push/", s.handlePush)
 	mux.HandleFunc("/api/feedback", s.handleFeedback)
+	mux.Handle("/metrics", promhttp.Handler())
 	return s
 }
 
