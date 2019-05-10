@@ -1,5 +1,7 @@
 # When push comes to shove...
 
+[![Go Report Card](https://goreportcard.com/badge/gitlab.com/pennersr/shove)](https://goreportcard.com/report/gitlab.com/pennersr/shove)
+
 ## Background
 
 This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which has been steadily serving up to 100M push notifications. But, given that it was still using the binary APNS protocol it was due for an upgrade.
