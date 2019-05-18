@@ -8,21 +8,29 @@ import (
 )
 
 type webPushMessage struct {
-	Subscription wpg.Subscription `json:"subscription"`
-	Payload      json.RawMessage  `json:"payload"`
+	Subscription json.RawMessage `json:"subscription"`
+	Payload      json.RawMessage `json:"payload"`
+	Token        string          `json:"token"`
 	Headers      struct {
 		TTL     int    `json:"ttl"`
 		Topic   string `json:"topic"`
 		Urgency string `json:"urgency"`
 	} `json:"headers"`
 
-	options wpg.Options
+	options      wpg.Options
+	subscription wpg.Subscription
 }
 
 func (wp *WebPush) convert(data []byte) (*webPushMessage, error) {
 	var msg webPushMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, err
+	}
+	if err := json.Unmarshal(msg.Subscription, &msg.subscription); err != nil {
+		return nil, err
+	}
+	if msg.Token == "" {
+		msg.Token = string(msg.Subscription)
 	}
 	msg.options = wpg.Options{
 		VAPIDPublicKey:  wp.vapidPublicKey,

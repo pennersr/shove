@@ -83,13 +83,16 @@ func (wp *WebPush) serveClient(ctx context.Context, q queue.Queue, fc services.F
 func (wp *WebPush) push(msg *webPushMessage, data []byte, fc services.FeedbackCollector) (success, retry bool) {
 	startedAt := time.Now()
 	// Send Notification
-	resp, err := wpg.SendNotification(msg.Payload, &msg.Subscription, &msg.options)
+	resp, err := wpg.SendNotification(msg.Payload, &msg.subscription, &msg.options)
 	if err != nil {
 		log.Println(wp, "error sending:", err)
 		return false, false
 	}
 	duration := time.Now().Sub(startedAt)
 	log.Printf("%s pushed (%d), took %s", wp, resp.StatusCode, duration)
+	defer func() {
+		fc.CountPush(wp.ID(), success, duration)
+	}()
 	switch resp.StatusCode {
 	case 201:
 		//  201 Created. The request to send a push message was received and accepted.
@@ -116,9 +119,7 @@ func (wp *WebPush) push(msg *webPushMessage, data []byte, fc services.FeedbackCo
 		// 410 Gone. The subscription is no longer valid and should be
 		// removed from application server. This can be reproduced by
 		// calling `unsubscribe()` on a `PushSubscription`.
-
-		// TODO: feedback
-
+		fc.TokenInvalid(wp.ID(), msg.Token)
 		return false, false
 
 	default:

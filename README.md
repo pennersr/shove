@@ -71,5 +71,9 @@ OK
 
 Push a WebPush notification:
 ```
-$ curl  -i  --data '{"subscription": {"endpoint":"https://updates.push.services.mozilla.com/wpush/v2/gAAAAAc4BA....UrjGlg","keys":{"auth":"Hbj3ap...al9ew","p256dh":"BeKdTC3...KLGBJlgF"}}, "headers": {"ttl": 3600, "urgency": "high"}, "payload": {"hello":"world"}}' http://localhost:8322/api/push/webpush
+$ curl  -i  --data '{"subscription": {"endpoint":"https://updates.push.services.mozilla.com/wpush/v2/gAAAAAc4BA....UrjGlg","keys":{"auth":"Hbj3ap...al9ew","p256dh":"BeKdTC3...KLGBJlgF"}}, "headers": {"ttl": 3600, "urgency": "high"}, "token": "use-this-for-feedback-instead-of-subscription", "payload": {"hello":"world"}}' http://localhost:8322/api/push/webpush
 ```
+
+The subscription (serialized as a JSON string) is used for receiving
+feedback. Alternatively, you can specify an optional `token` parameter as done
+in the example above.
