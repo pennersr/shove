@@ -10,16 +10,12 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 
 - Asynchronous: a push client can just fire & forget.
 - Feedback: asynchronously receive information on invalid device tokens.
-- Services: APNS, FCM.
+- Services: APNS, FCM, Web Push.
 - Multiple workers per push service.
 - Queueing: both in-memory and persistent via Redis.
 - Exponential back-off in case of failure.
 - Less moving parts: when using Redis, you can push directly to the queue, bypassing the need for the Shove server to be up and running.
 - Prometheus support
-
-## Roadmap
-
-- Add support for Web push.
 
 
 ## Why?
@@ -33,7 +29,7 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 
 Running:
 ```
-shove -fcm-api-key $FCM_API_KEY -apns-certificate-path /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-path /etc/shove/apns/sandbox/bundle.pem -api-addr localhost:8322 -queue-redis redis://redis:6379
+shove -fcm-api-key $FCM_API_KEY -apns-certificate-path /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-path /etc/shove/apns/sandbox/bundle.pem -api-addr localhost:8322 -queue-redis redis://redis:6379 -webpush-vapid-public-key=abc123 -webpush-vapid-private-key=secret
 ```
 
 Receive feedback:
@@ -71,4 +67,9 @@ Content-Length: 2
 Content-Type: text/plain; charset=utf-8
 
 OK
+```
+
+Push a WebPush notification:
+```
+$ curl  -i  --data '{"subscription": {"endpoint":"https://updates.push.services.mozilla.com/wpush/v2/gAAAAAc4BA....UrjGlg","keys":{"auth":"Hbj3ap...al9ew","p256dh":"BeKdTC3...KLGBJlgF"}}, "headers": {"ttl": 3600, "urgency": "high"}, "payload": {"hello":"world"}}' http://localhost:8322/api/push/webpush
 ```

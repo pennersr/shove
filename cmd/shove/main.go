@@ -9,6 +9,7 @@ import (
 	"gitlab.com/pennersr/shove/internal/server"
 	"gitlab.com/pennersr/shove/internal/services/apns"
 	"gitlab.com/pennersr/shove/internal/services/fcm"
+	"gitlab.com/pennersr/shove/internal/services/webpush"
 	"log"
 	"os"
 	"os/signal"
@@ -20,6 +21,8 @@ var apnsCertificate = flag.String("apns-certificate-path", "", "APNS certificate
 var apnsSandboxCertificate = flag.String("apns-sandbox-certificate-path", "", "APNS sandbox certificate path")
 var fcmAPIKey = flag.String("fcm-api-key", "", "FCM API key")
 var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
+var webPushVAPIDPublicKey = flag.String("webpush-vapid-public-key", "", "VAPID public key")
+var webPushVAPIDPrivateKey = flag.String("webpush-vapid-private-key", "", "VAPID public key")
 
 func main() {
 	flag.Parse()
@@ -59,6 +62,14 @@ func main() {
 			log.Fatal("Error setting up FCM service:", err)
 		}
 		s.AddService(fcm)
+	}
+
+	if *webPushVAPIDPrivateKey != "" {
+		web, err := webpush.NewWebPush(*webPushVAPIDPublicKey, *webPushVAPIDPrivateKey)
+		if err != nil {
+			log.Fatal("Error setting up WebPush service:", err)
+		}
+		s.AddService(web)
 	}
 
 	go func() {
