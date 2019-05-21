@@ -88,6 +88,7 @@ func (wp *WebPush) push(msg *webPushMessage, data []byte, fc services.FeedbackCo
 		log.Println(wp, "error sending:", err)
 		return false, false
 	}
+	defer resp.Body.Close()
 	duration := time.Now().Sub(startedAt)
 	log.Printf("%s pushed (%d), took %s", wp, resp.StatusCode, duration)
 	defer func() {
