@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -28,7 +29,7 @@ func main() {
 	flag.Parse()
 
 	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	var qf queue.QueueFactory
 	if *redisURL == "" {
