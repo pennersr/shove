@@ -31,7 +31,7 @@ func NewRedisClient(redisURL string) Client {
 
 // PushRaw ...
 func (rc *redisClient) PushRaw(id string, data []byte) (err error) {
-	waitingList, _ := shvredis.ListNames(id)
+	waitingList := shvredis.ListName(id)
 	conn := rc.pool.Get()
 	defer conn.Close()
 	_, err = conn.Do("RPUSH", waitingList, data)

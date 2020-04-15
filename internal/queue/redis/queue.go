@@ -2,11 +2,11 @@ package redis
 
 import (
 	"context"
-	"errors"
-	"github.com/gomodule/redigo/redis"
-	"gitlab.com/pennersr/shove/internal/queue"
-	"log"
 	"time"
+
+	"github.com/gomodule/redigo/redis"
+	"gitlab.com/pennersr/redq"
+	"gitlab.com/pennersr/shove/internal/queue"
 )
 
 type redisQueueFactory struct {
@@ -14,11 +14,7 @@ type redisQueueFactory struct {
 }
 
 type redisQueue struct {
-	id           string
-	pool         *redis.Pool
-	shuttingDown bool
-	waitingList  string
-	pendingList  string
+	q *redq.RedQueue
 }
 
 // NewQueueFactory ...
@@ -35,96 +31,38 @@ func NewQueueFactory(url string) queue.QueueFactory {
 	return qf
 }
 
-func (rq *redisQueue) Queue(msg []byte) (err error) {
-	conn := rq.pool.Get()
-	defer conn.Close()
-	_, err = conn.Do("RPUSH", rq.waitingList, msg)
+func (rq redisQueue) Queue(msg []byte) (err error) {
+	return rq.q.Queue(msg)
+}
+
+func (rq redisQueue) Get(ctx context.Context) (qm queue.QueuedMessage, err error) {
+	qm, err = rq.q.Get(ctx)
 	return
 }
 
-func (rq *redisQueue) Shutdown() (err error) {
-	rq.shuttingDown = true
-	err = rq.pool.Close()
-	return
+func (rq redisQueue) Remove(qm queue.QueuedMessage) (err error) {
+	return rq.q.Remove(qm.(redq.QueuedMessage))
 }
 
-func (rq *redisQueue) Remove(qm queue.QueuedMessage) (err error) {
-	conn := rq.pool.Get()
-	defer conn.Close()
-	n, err := redis.Int(conn.Do("LREM", rq.pendingList, 1, qm.Message()))
-	if err != nil {
-		return
-	}
-	if n == 0 {
-		log.Println("Push message already gone from pending list", rq.pendingList)
-	}
-	return nil
+func (rq redisQueue) Requeue(qm queue.QueuedMessage) (err error) {
+	return rq.q.Requeue(qm.(redq.QueuedMessage))
 }
 
-func (rq *redisQueue) Requeue(qm queue.QueuedMessage) (err error) {
-	conn := rq.pool.Get()
-	defer conn.Close()
-	if err = conn.Send("MULTI"); err != nil {
-		return
-	}
-	if err = conn.Send("LREM", rq.pendingList, 1, qm.Message()); err != nil {
-		return
-	}
-	if err = conn.Send("RPUSH", rq.waitingList, qm.Message()); err != nil {
-		return
-	}
-	_, err = conn.Do("EXEC")
-	return
-}
-
-func (rq *redisQueue) Get(ctx context.Context) (qm queue.QueuedMessage, err error) {
-	conn := rq.pool.Get()
-	defer conn.Close()
-
-	var raw []byte
-	for ctx.Err() == nil {
-		raw, err = redis.Bytes(conn.Do("BRPOPLPUSH", rq.waitingList, rq.pendingList, 2))
-		if err == redis.ErrNil {
-			err = nil
-			continue
-		}
-		if err != nil {
-			return
-		}
-		qm = redisQueuedMessage(raw)
-		return
-	}
-	err = errors.New("queue shutting down")
-	return
-}
-
-func (rq *redisQueue) recover() (err error) {
-	conn := rq.pool.Get()
-	defer conn.Close()
-	for {
-		_, err := redis.Bytes(conn.Do("RPOPLPUSH", rq.pendingList, rq.waitingList))
-		if err == redis.ErrNil {
-			log.Println("No more", rq.id, "push notifications to recover")
-			break
-		}
-		if err != nil {
-			return err
-		}
-		log.Println("recovered pending", rq.id, "push notification")
-	}
-	return
+func (rq redisQueue) Shutdown() (err error) {
+	return rq.q.Close()
 }
 
 func (rqf *redisQueueFactory) NewQueue(id string) (q queue.Queue, err error) {
-	rq := &redisQueue{
-		id:   id,
-		pool: rqf.pool,
-	}
-	rq.waitingList, rq.pendingList = ListNames(id)
-	err = rq.recover()
+	waitingList := ListName(id)
+	rq, err := redq.NewQueue(rqf.pool, waitingList)
 	if err != nil {
 		return
 	}
-	q = rq
+	q = redisQueue{q: rq}
 	return
+}
+
+// ListName returns the Redis list name used for queueing.
+func ListName(serviceID string) string {
+	return "shove:" + serviceID
 }
