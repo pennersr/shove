@@ -10,7 +10,11 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 
 - Asynchronous: a push client can just fire & forget.
 - Feedback: asynchronously receive information on invalid device tokens.
-- Services: APNS, FCM, Web Push, Telegram.
+- Services:
+ - APNS
+ - FCM
+ - Web Push
+ - Telegram.
 - Multiple workers per push service.
 - Queueing: both in-memory and persistent via Redis.
 - Exponential back-off in case of failure.
@@ -27,64 +31,77 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 
 ## Usage
 
-Running:
-```
-shove -fcm-api-key $FCM_API_KEY -apns-certificate-path /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-path /etc/shove/apns/sandbox/bundle.pem -api-addr localhost:8322 -queue-redis redis://redis:6379 -webpush-vapid-public-key=abc123 -webpush-vapid-private-key=secret
-```
+### Running
 
-Receive feedback:
-```
-$ curl -X POST 'http://localhost:8322/api/feedback'
+Start the server:
 
-{
-  "feedback": [
-    {"service":"apns-sandbox",
-     "token":"881becff86cbd221544044d3b9aeaaf6314dfbef2abb2fe313f3725f4505cb47",
-     "reason":"invalid"}
-  ]
-}
-```
+    $ shove \
+        -api-addr localhost:8322 \
+        -queue-redis redis://redis:6379 \
+        -fcm-api-key $FCM_API_KEY \
+        -apns-certificate-path /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-path /etc/shove/apns/sandbox/bundle.pem \
+        -webpush-vapid-public-key=abc123 -webpush-vapid-private-key=secret \
+        -telegram-bot-token $TELEGRAM_BOT_TOKEN
+
+
+### APNS
 
 Push an APNS notification:
-```
-$ curl  -i  --data '{"service": "apns", "headers": {"apns-priority": 10, "apns-topic": "com.shove.app"}, "payload": {"aps": { "alert": "hi"}}, "token": "81b8ecff8cb6d22154404d43b9aeaaf6219dfbef2abb2fe313f3725f4505cb47"}' http://localhost:8322/api/push/apns
 
-HTTP/1.1 202 Accepted
-Date: Tue, 07 May 2019 19:00:15 GMT
-Content-Length: 2
-Content-Type: text/plain; charset=utf-8
+    $ curl  -i  --data '{"service": "apns", "headers": {"apns-priority": 10, "apns-topic": "com.shove.app"}, "payload": {"aps": { "alert": "hi"}}, "token": "81b8ecff8cb6d22154404d43b9aeaaf6219dfbef2abb2fe313f3725f4505cb47"}' http://localhost:8322/api/push/apns
 
-OK
-```
+
+A successful push results in:
+
+    HTTP/1.1 202 Accepted
+    Date: Tue, 07 May 2019 19:00:15 GMT
+    Content-Length: 2
+    Content-Type: text/plain; charset=utf-8
+
+    OK
+
+
+### FCM
 
 Push an FCM notification:
-```
-$ curl  -i  --data '{"to": "feE8R6apOdA:AA91PbGHMX5HUoB-tbcqBO_e75NbiOc2AiFbGL3rrYtc99Z5ejbGmCCvOhKW5liqfOzRGOXxto5l7y6b_0dCc-AQ2_bXOcDkcPZgsXGbZvmEjaZA72DfVkZ2pfRrcpcc_9IiiRT5NYC", "notification": {"title": "Hello"}}' http://localhost:8322/api/push/fcm
 
-HTTP/1.1 202 Accepted
-Date: Tue, 07 May 2019 19:00:15 GMT
-Content-Length: 2
-Content-Type: text/plain; charset=utf-8
+    $ curl  -i  --data '{"to": "feE8R6apOdA:AA91PbGHMX5HUoB-tbcqBO_e75NbiOc2AiFbGL3rrYtc99Z5ejbGmCCvOhKW5liqfOzRGOXxto5l7y6b_0dCc-AQ2_bXOcDkcPZgsXGbZvmEjaZA72DfVkZ2pfRrcpcc_9IiiRT5NYC", "notification": {"title": "Hello"}}' http://localhost:8322/api/push/fcm
 
-OK
-```
+
+### WebPush
 
 Push a WebPush notification:
-```
-$ curl  -i  --data '{"subscription": {"endpoint":"https://updates.push.services.mozilla.com/wpush/v2/gAAAAAc4BA....UrjGlg","keys":{"auth":"Hbj3ap...al9ew","p256dh":"BeKdTC3...KLGBJlgF"}}, "headers": {"ttl": 3600, "urgency": "high"}, "token": "use-this-for-feedback-instead-of-subscription", "payload": {"hello":"world"}}' http://localhost:8322/api/push/webpush
-```
+
+    $ curl  -i  --data '{"subscription": {"endpoint":"https://updates.push.services.mozilla.com/wpush/v2/gAAAAAc4BA....UrjGlg","keys":{"auth":"Hbj3ap...al9ew","p256dh":"BeKdTC3...KLGBJlgF"}}, "headers": {"ttl": 3600, "urgency": "high"}, "token": "use-this-for-feedback-instead-of-subscription", "payload": {"hello":"world"}}' http://localhost:8322/api/push/webpush
 
 The subscription (serialized as a JSON string) is used for receiving
 feedback. Alternatively, you can specify an optional `token` parameter as done
 in the example above.
 
+
+### Telegram
+
 Push a Telegram notification:
 
-```
-$ curl  -i  --data '{"method": "sendMessage", "payload": {"chat_id": "12345678", "text": "Hello!"}}' http://localhost:8322/api/push/telegram
-```
+    $ curl  -i  --data '{"method": "sendMessage", "payload": {"chat_id": "12345678", "text": "Hello!"}}' http://localhost:8322/api/push/telegram
 
 Note that the Telegram Bot API documents `chat_id` as "Integer or String" --
 Shove requires strings to be passed. For users that disconnected from your bot
 the chat ID will be communicated back through the feedback mechanism. Here, the
 token will equal the unreachable chat ID.
+
+
+### Receive Feedback
+
+Outdated/invalid tokens are communicated back. To receive those, you can periodically query the feedback channel to receive token feedback, and remove those from your database:
+
+
+    $ curl -X POST 'http://localhost:8322/api/feedback'
+
+    {
+      "feedback": [
+        {"service":"apns-sandbox",
+         "token":"881becff86cbd221544044d3b9aeaaf6314dfbef2abb2fe313f3725f4505cb47",
+         "reason":"invalid"}
+      ]
+    }
