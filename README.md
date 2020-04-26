@@ -10,7 +10,7 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 
 - Asynchronous: a push client can just fire & forget.
 - Feedback: asynchronously receive information on invalid device tokens.
-- Services: APNS, FCM, Web Push.
+- Services: APNS, FCM, Web Push, Telegram.
 - Multiple workers per push service.
 - Queueing: both in-memory and persistent via Redis.
 - Exponential back-off in case of failure.
@@ -77,3 +77,14 @@ $ curl  -i  --data '{"subscription": {"endpoint":"https://updates.push.services.
 The subscription (serialized as a JSON string) is used for receiving
 feedback. Alternatively, you can specify an optional `token` parameter as done
 in the example above.
+
+Push a Telegram notification:
+
+```
+$ curl  -i  --data '{"method": "sendMessage", "payload": {"chat_id": "12345678", "text": "Hello!"}}' http://localhost:8322/api/push/telegram
+```
+
+Note that the Telegram Bot API documents `chat_id` as "Integer or String" --
+Shove requires strings to be passed. For users that disconnected from your bot
+the chat ID will be communicated back through the feedback mechanism. Here, the
+token will equal the unreachable chat ID.

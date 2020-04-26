@@ -9,6 +9,7 @@ import (
 	"gitlab.com/pennersr/shove/internal/server"
 	"gitlab.com/pennersr/shove/internal/services/apns"
 	"gitlab.com/pennersr/shove/internal/services/fcm"
+	"gitlab.com/pennersr/shove/internal/services/telegram"
 	"gitlab.com/pennersr/shove/internal/services/webpush"
 	"log"
 	"os"
@@ -24,6 +25,7 @@ var fcmAPIKey = flag.String("fcm-api-key", "", "FCM API key")
 var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
 var webPushVAPIDPublicKey = flag.String("webpush-vapid-public-key", "", "VAPID public key")
 var webPushVAPIDPrivateKey = flag.String("webpush-vapid-private-key", "", "VAPID public key")
+var telegramBotToken = flag.String("telegram-bot-token", "", "Telegram bot token")
 
 func main() {
 	flag.Parse()
@@ -71,6 +73,14 @@ func main() {
 			log.Fatal("Error setting up WebPush service:", err)
 		}
 		s.AddService(web)
+	}
+
+	if *telegramBotToken != "" {
+		tg, err := telegram.NewTelegramService(*telegramBotToken)
+		if err != nil {
+			log.Fatal("Error setting up Telegram service:", err)
+		}
+		s.AddService(tg)
 	}
 
 	go func() {
