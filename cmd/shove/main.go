@@ -48,7 +48,9 @@ func main() {
 		if err != nil {
 			log.Fatal("Error setting up APNS service:", err)
 		}
-		s.AddService(apns)
+		if err := s.AddService(apns); err != nil {
+			log.Fatal("Error adding APNS service:", err)
+		}
 	}
 
 	if *apnsSandboxCertificate != "" {
@@ -56,7 +58,9 @@ func main() {
 		if err != nil {
 			log.Fatal("Error setting up APNS sandbox service:", err)
 		}
-		s.AddService(apns)
+		if err := s.AddService(apns); err != nil {
+			log.Fatal("Error adding APNS sandbox service:", err)
+		}
 	}
 
 	if *fcmAPIKey != "" {
@@ -64,7 +68,9 @@ func main() {
 		if err != nil {
 			log.Fatal("Error setting up FCM service:", err)
 		}
-		s.AddService(fcm)
+		if err := s.AddService(fcm); err != nil {
+			log.Fatal("Error adding FCM service:", err)
+		}
 	}
 
 	if *webPushVAPIDPrivateKey != "" {
@@ -72,7 +78,9 @@ func main() {
 		if err != nil {
 			log.Fatal("Error setting up WebPush service:", err)
 		}
-		s.AddService(web)
+		if err := s.AddService(web); err != nil {
+			log.Fatal("Error adding WebPush service:", err)
+		}
 	}
 
 	if *telegramBotToken != "" {
@@ -80,7 +88,9 @@ func main() {
 		if err != nil {
 			log.Fatal("Error setting up Telegram service:", err)
 		}
-		s.AddService(tg)
+		if err := s.AddService(tg); err != nil {
+			log.Fatal("Error adding Telegram service:", err)
+		}
 	}
 
 	go func() {
