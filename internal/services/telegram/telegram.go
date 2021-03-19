@@ -124,11 +124,11 @@ func (tg *TelegramService) push(msg *telegramMessage, data []byte, fc services.F
 		fc.TokenInvalid(tg.ID(), msg.ChatID)
 	}
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		log.Println(tg, "rejected, status code:", resp.StatusCode)
+		log.Printf("%s rejected: %s (%d), HTTP status: %d", tg, respData.Description, respData.ErrorCode, resp.StatusCode)
 		return true, false
 	}
 	if resp.StatusCode >= 500 && resp.StatusCode < 600 {
-		log.Println(tg, "upstream error, status code:", resp.StatusCode)
+		log.Println(tg, "upstream error, HTTP status:", resp.StatusCode)
 		return false, true
 	}
 	log.Println(tg, "pushed, took", duration)
