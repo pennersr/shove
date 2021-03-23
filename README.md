@@ -12,6 +12,8 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 - Feedback: asynchronously receive information on invalid device tokens.
 - Services:
  - APNS
+ - Email (supports automatic creation of email digests in case the rate limit
+   is exceeded)
  - FCM
  - Web Push
  - Telegram.
@@ -105,3 +107,22 @@ Outdated/invalid tokens are communicated back. To receive those, you can periodi
          "reason":"invalid"}
       ]
     }
+
+
+### Email
+
+In order to keep your SMTP server safe from being blacklisted, the email service
+supports rate limitting. When the rate is exceeded, multiple mails are
+automatically digested.
+
+    $ shove \
+        -email-host localhost \
+        -email-port 1025 \
+        -api-addr localhost:8322 \
+        -email-rate-amount 3 \
+        -email-rate-per 10 \
+        -queue-redis redis://localhost:6379
+
+Push an email:
+
+	$ curl -i -X POST --data @./scripts/email.json http://localhost:8322/api/push/email

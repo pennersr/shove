@@ -8,6 +8,7 @@ import (
 	"gitlab.com/pennersr/shove/internal/queue/redis"
 	"gitlab.com/pennersr/shove/internal/server"
 	"gitlab.com/pennersr/shove/internal/services/apns"
+	"gitlab.com/pennersr/shove/internal/services/email"
 	"gitlab.com/pennersr/shove/internal/services/fcm"
 	"gitlab.com/pennersr/shove/internal/services/telegram"
 	"gitlab.com/pennersr/shove/internal/services/webpush"
@@ -26,6 +27,10 @@ var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
 var webPushVAPIDPublicKey = flag.String("webpush-vapid-public-key", "", "VAPID public key")
 var webPushVAPIDPrivateKey = flag.String("webpush-vapid-private-key", "", "VAPID public key")
 var telegramBotToken = flag.String("telegram-bot-token", "", "Telegram bot token")
+var emailHost = flag.String("email-host", "", "Email host")
+var emailPort = flag.Int("email-port", 25, "Email port")
+var emailRateAmount = flag.Int("email-rate-amount", 0, "Email max. rate (amount)")
+var emailRatePer = flag.Int("email-rate-per", 0, "Email max. rate (per seconds)")
 
 func main() {
 	flag.Parse()
@@ -46,57 +51,74 @@ func main() {
 	if *apnsCertificate != "" {
 		apns, err := apns.NewAPNS(*apnsCertificate, true)
 		if err != nil {
-			log.Fatal("Error setting up APNS service:", err)
+			log.Fatal("[ERROR] Setting up APNS service:", err)
 		}
 		if err := s.AddService(apns); err != nil {
-			log.Fatal("Error adding APNS service:", err)
+			log.Fatal("[ERROR] Adding APNS service:", err)
 		}
 	}
 
 	if *apnsSandboxCertificate != "" {
 		apns, err := apns.NewAPNS(*apnsSandboxCertificate, false)
 		if err != nil {
-			log.Fatal("Error setting up APNS sandbox service:", err)
+			log.Fatal("[ERROR] Setting up APNS sandbox service:", err)
 		}
 		if err := s.AddService(apns); err != nil {
-			log.Fatal("Error adding APNS sandbox service:", err)
+			log.Fatal("[ERROR] Adding APNS sandbox service:", err)
 		}
 	}
 
 	if *fcmAPIKey != "" {
 		fcm, err := fcm.NewFCM(*fcmAPIKey)
 		if err != nil {
-			log.Fatal("Error setting up FCM service:", err)
+			log.Fatal("[ERROR] Setting up FCM service:", err)
 		}
 		if err := s.AddService(fcm); err != nil {
-			log.Fatal("Error adding FCM service:", err)
+			log.Fatal("[ERROR] Adding FCM service:", err)
 		}
 	}
 
 	if *webPushVAPIDPrivateKey != "" {
 		web, err := webpush.NewWebPush(*webPushVAPIDPublicKey, *webPushVAPIDPrivateKey)
 		if err != nil {
-			log.Fatal("Error setting up WebPush service:", err)
+			log.Fatal("[ERROR] Setting up WebPush service:", err)
 		}
 		if err := s.AddService(web); err != nil {
-			log.Fatal("Error adding WebPush service:", err)
+			log.Fatal("[ERROR] Adding WebPush service:", err)
 		}
 	}
 
 	if *telegramBotToken != "" {
 		tg, err := telegram.NewTelegramService(*telegramBotToken)
 		if err != nil {
-			log.Fatal("Error setting up Telegram service:", err)
+			log.Fatal("[ERROR] Setting up Telegram service:", err)
 		}
 		if err := s.AddService(tg); err != nil {
-			log.Fatal("Error adding Telegram service:", err)
+			log.Fatal("[ERROR] Adding Telegram service:", err)
+		}
+	}
+
+	if *emailHost != "" {
+		config := email.EmailConfig{
+			EmailHost: *emailHost,
+			EmailPort: *emailPort,
+			RateMax:   *emailRateAmount,
+			RatePer:   time.Second * time.Duration(*emailRatePer),
+		}
+		email, err := email.NewEmailService(config)
+		if err != nil {
+			log.Fatal("[ERROR] Setting up email service:", err)
+		}
+		if err := s.AddService(email); err != nil {
+			log.Fatal("[ERROR] Adding email service:", err)
 		}
 	}
 
 	go func() {
+		log.Println("Serving on", *apiAddr)
 		err := s.Serve()
 		if err != nil {
-			log.Fatal("Error serving:", err)
+			log.Fatal("[ERROR] Serving:", err)
 		}
 	}()
 	<-stop
