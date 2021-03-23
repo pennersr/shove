@@ -32,7 +32,12 @@ var emailPort = flag.Int("email-port", 25, "Email port")
 var emailRateAmount = flag.Int("email-rate-amount", 0, "Email max. rate (amount)")
 var emailRatePer = flag.Int("email-rate-per", 0, "Email max. rate (per seconds)")
 
+func newServiceLog(prefix string) *log.Logger {
+	return log.New(log.Writer(), prefix+": ", log.Flags())
+}
+
 func main() {
+	log.SetFlags(log.Flags() | log.Lmsgprefix)
 	flag.Parse()
 
 	stop := make(chan os.Signal, 1)
@@ -104,6 +109,7 @@ func main() {
 			EmailPort: *emailPort,
 			RateMax:   *emailRateAmount,
 			RatePer:   time.Second * time.Duration(*emailRatePer),
+			Log:       newServiceLog("email"),
 		}
 		email, err := email.NewEmailService(config)
 		if err != nil {

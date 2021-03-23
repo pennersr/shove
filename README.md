@@ -131,15 +131,18 @@ Push an email:
 
 	$ curl -i -X POST --data @./scripts/email.json http://localhost:8322/api/push/email
 
+If you send too many emails, you'll notice that they are digested, and at a
+later time, one digest mail is being sent:
+
     2021/03/23 21:15:57 Using Redis queue at redis://localhost:6379
     2021/03/23 21:15:57 Initializing Email service
     2021/03/23 21:15:57 Serving on localhost:8322
     2021/03/23 21:15:57 Shove server started
-    2021/03/23 21:15:57 Email worker started
-    2021/03/23 21:15:57 Email digester started
-    2021/03/23 21:15:58 Email Sending email
-    2021/03/23 21:15:59 Email Sending email
-    2021/03/23 21:15:59 Email Sending email
-    2021/03/23 21:16:00 Email rate to john@doe.org too high, digested
-    2021/03/23 21:16:12 Email rate to john@doe.org too high, digested
-    2021/03/23 21:16:18 Sending digest email
+    2021/03/23 21:15:57 email: Worker started
+    2021/03/23 21:15:57 email: Digester started
+    2021/03/23 21:15:58 email: Sending email
+    2021/03/23 21:15:59 email: Sending email
+    2021/03/23 21:15:59 email: Sending email
+    2021/03/23 21:16:00 email: Rate to john@doe.org exceeded, email digested
+    2021/03/23 21:16:12 email: Rate to john@doe.org exceeded, email digested
+    2021/03/23 21:16:18 email: Sending digest email

@@ -16,6 +16,7 @@ type EmailConfig struct {
 	EmailPort int
 	RateMax   int
 	RatePer   time.Duration
+	Log       *log.Logger
 }
 
 type EmailService struct {
@@ -45,14 +46,14 @@ func (es *EmailService) push(q queue.Queue, qm queue.QueuedMessage, email email,
 	if digested {
 		return true, false
 	}
-	log.Println(es, "Sending email")
+	es.config.Log.Println("Sending email")
 	body, err := encodeEmail(email)
 	if err != nil {
 		return false, false
 	}
 	err = es.config.send(email.From, email.To, body)
 	if err != nil {
-		log.Printf("[ERROR] %s: Sending email failed: %s", es, err)
+		es.config.Log.Printf("[ERROR] Sending email failed: %s", err)
 		return false, false
 	}
 	return
@@ -61,25 +62,25 @@ func (es *EmailService) push(q queue.Queue, qm queue.QueuedMessage, email email,
 func (es *EmailService) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
 	es.wg.Add(1)
 	go func() {
-		log.Println(es, "digester started")
+		es.config.Log.Println("Digester started")
 		es.digester.serve()
-		log.Println(es, "digester stopped")
+		es.config.Log.Println("Digester stopped")
 		es.wg.Add(-1)
 	}()
-	log.Println(es, "worker started")
+	es.config.Log.Println("Worker started")
 	failureCount := 0
 	for ctx.Err() == nil {
 		var qm queue.QueuedMessage
 		qm, err := q.Get(ctx)
 		if err != nil {
-			log.Printf("[ERROR] %s: reading from queue: %s", es, err)
+			es.config.Log.Printf("[ERROR] Reading from queue: %s", err)
 			es.digester.requestShutdown()
 			break
 		}
 		msg := qm.Message()
 		emsg, err := es.convert(msg)
 		if err != nil {
-			log.Printf("[ERROR] %s: bad message: %s", es, err)
+			es.config.Log.Printf("[ERROR] Bad message: %s", err)
 			es.remove(q, qm)
 			continue
 		}
@@ -88,11 +89,11 @@ func (es *EmailService) Serve(ctx context.Context, q queue.Queue, fc services.Fe
 			es.remove(q, qm)
 		} else {
 			if err = q.Requeue(qm); err != nil {
-				log.Printf("[ERROR] %s: requeue failed: %s", es, err)
+				es.config.Log.Printf("[ERROR] Requeue failed: %s", err)
 			}
 		}
 		if retry {
-			backoff(ctx, failureCount)
+			es.backoff(ctx, failureCount)
 			failureCount++
 
 		} else {
@@ -101,13 +102,13 @@ func (es *EmailService) Serve(ctx context.Context, q queue.Queue, fc services.Fe
 		}
 	}
 	es.wg.Wait()
-	log.Println(es, "worker stopped")
+	es.config.Log.Println("Worker stopped")
 	return
 }
 
-func backoff(ctx context.Context, failureCount int) {
+func (es *EmailService) backoff(ctx context.Context, failureCount int) {
 	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	log.Printf("Backing off for %s", sleep)
+	es.config.Log.Printf("Backing off for %s", sleep)
 	ctx, cancel := context.WithTimeout(ctx, sleep)
 	defer cancel()
 	<-ctx.Done()
@@ -115,6 +116,6 @@ func backoff(ctx context.Context, failureCount int) {
 
 func (es *EmailService) remove(q queue.Queue, qm queue.QueuedMessage) {
 	if err := q.Remove(qm); err != nil {
-		log.Printf("[ERROR] %s: remove from queue failed:", err)
+		es.config.Log.Printf("[ERROR] %s: remove from queue failed:", err)
 	}
 }

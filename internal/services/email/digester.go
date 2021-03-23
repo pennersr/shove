@@ -2,7 +2,6 @@ package email
 
 import (
 	"gitlab.com/pennersr/shove/internal/queue"
-	"log"
 	"sync"
 	"time"
 )
@@ -68,7 +67,7 @@ func (d *digester) prepareToMail(q queue.Queue, qm queue.QueuedMessage, email em
 		d.recordSend(key)
 		return false
 	}
-	log.Printf("Email rate to %s too high, digested", email.To[0])
+	d.config.Log.Printf("Rate to %s exceeded, email digested", email.To[0])
 
 	batch, ok := d.batches[key]
 	if ok {
@@ -136,7 +135,7 @@ func (d *digester) shutdown() {
 	d.cond.L.Lock()
 	defer d.cond.L.Unlock()
 
-	log.Println("Shutting down email digester:", len(d.batches), "batches unsent")
+	d.config.Log.Println("Shutting down email digester:", len(d.batches), "batches unsent")
 	for _, batch := range d.batches {
 		for _, qm := range batch.messages {
 			batch.q.Queue(qm.Message())
@@ -157,10 +156,10 @@ func (d *digester) serve() {
 }
 
 func (d *digester) sendBatch(b batch) {
-	log.Println("Sending digest email")
+	d.config.Log.Println("Sending digest email")
 	body, err := encodeEmailDigest(b.emails)
 	if err != nil {
-		log.Println("[ERROR] Failed to encode email digest:", err)
+		d.config.Log.Println("[ERROR] Failed to encode email digest:", err)
 		return
 	}
 	d.cond.L.Lock()
@@ -169,7 +168,7 @@ func (d *digester) sendBatch(b batch) {
 
 	err = d.config.send(b.emails[0].From, b.emails[0].To, body)
 	if err != nil {
-		log.Println("[ERROR] Cannot send digest mail:", err)
+		d.config.Log.Println("[ERROR] Cannot send digest mail:", err)
 		return
 	}
 }
