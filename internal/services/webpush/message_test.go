@@ -2,6 +2,8 @@ package webpush
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"testing"
 )
 
@@ -14,7 +16,7 @@ const subscription = `{
 }`
 
 func TestConvert(t *testing.T) {
-	wp, err := NewWebPush("pub", "pvt")
+	wp, err := NewWebPush("pub", "pvt", log.New(os.Stderr, "", log.LstdFlags))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +42,7 @@ func TestConvert(t *testing.T) {
 }
 
 func TestConvertWithToken(t *testing.T) {
-	wp, err := NewWebPush("pub", "pvt")
+	wp, err := NewWebPush("pub", "pvt", log.New(os.Stderr, "", log.LstdFlags))
 	if err != nil {
 		t.Fatal(err)
 	}
