@@ -11,12 +11,12 @@ This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which h
 - Asynchronous: a push client can just fire & forget.
 - Feedback: asynchronously receive information on invalid device tokens.
 - Services:
- - APNS
- - Email (supports automatic creation of email digests in case the rate limit
-   is exceeded)
- - FCM
- - Web Push
- - Telegram.
+  - APNS
+  - Email: supports automatic creation of email digests in case the rate limit
+    is exceeded
+  - FCM
+  - Web Push
+  - Telegram
 - Multiple workers per push service.
 - Queueing: both in-memory and persistent via Redis.
 - Exponential back-off in case of failure.
