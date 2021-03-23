@@ -157,7 +157,7 @@ func (d *digester) serve() {
 }
 
 func (d *digester) sendBatch(b batch) {
-	log.Println("Send digest mail")
+	log.Println("Sending digest email")
 	body, err := encodeEmailDigest(b.emails)
 	if err != nil {
 		log.Println("[ERROR] Failed to encode email digest:", err)
