@@ -18,10 +18,11 @@ type WebPush struct {
 	vapidPrivateKey string
 	transport       *http.Transport
 	wg              sync.WaitGroup
+	log             *log.Logger
 }
 
 // NewWebPush ...
-func NewWebPush(vapidPub, vapidPvt string) (wp *WebPush, err error) {
+func NewWebPush(vapidPub, vapidPvt string, log *log.Logger) (wp *WebPush, err error) {
 	wp = &WebPush{
 		vapidPrivateKey: vapidPvt,
 		vapidPublicKey:  vapidPub,
@@ -29,6 +30,7 @@ func NewWebPush(vapidPub, vapidPvt string) (wp *WebPush, err error) {
 			MaxIdleConns:    5,
 			IdleConnTimeout: 30 * time.Second,
 		},
+		log: log,
 	}
 	return
 }
@@ -51,13 +53,13 @@ func (wp *WebPush) serveClient(ctx context.Context, q queue.Queue, fc services.F
 	for ctx.Err() == nil {
 		qm, err := q.Get(ctx)
 		if err != nil {
-			log.Println(wp, "error reading from queue:", err)
+			wp.log.Println("[ERROR] Reading from queue:", err)
 			return
 		}
 		msg := qm.Message()
 		notif, err := wp.convert(msg)
 		if err != nil {
-			log.Println(wp, "bad message:", err)
+			wp.log.Println("[ERROR] Bad message:", err)
 			wp.remove(q, qm)
 			continue
 		}
@@ -66,11 +68,11 @@ func (wp *WebPush) serveClient(ctx context.Context, q queue.Queue, fc services.F
 			wp.remove(q, qm)
 		} else {
 			if err = q.Requeue(qm); err != nil {
-				log.Println(wp, "error putting back in the queue:", err)
+				wp.log.Println("[ERROR] Putting back in the queue:", err)
 			}
 		}
 		if retry {
-			backoff(ctx, failureCount)
+			wp.backoff(ctx, failureCount)
 			failureCount++
 
 		} else {
@@ -85,12 +87,12 @@ func (wp *WebPush) push(msg *webPushMessage, data []byte, fc services.FeedbackCo
 	// Send Notification
 	resp, err := wpg.SendNotification(msg.Payload, &msg.subscription, &msg.options)
 	if err != nil {
-		log.Println(wp, "error sending:", err)
+		wp.log.Println("[ERROR] Sending:", err)
 		return false, false
 	}
 	defer resp.Body.Close()
 	duration := time.Now().Sub(startedAt)
-	log.Printf("%s pushed (%d), took %s", wp, resp.StatusCode, duration)
+	wp.log.Printf("Pushed (%d), took %s", resp.StatusCode, duration)
 	defer func() {
 		fc.CountPush(wp.ID(), success, duration)
 	}()
@@ -129,9 +131,9 @@ func (wp *WebPush) push(msg *webPushMessage, data []byte, fc services.FeedbackCo
 	}
 }
 
-func backoff(ctx context.Context, failureCount int) {
+func (wp *WebPush) backoff(ctx context.Context, failureCount int) {
 	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	log.Printf("Backing off for %s", sleep)
+	wp.log.Printf("Backing off for %s", sleep)
 	ctx, cancel := context.WithTimeout(ctx, sleep)
 	defer cancel()
 	<-ctx.Done()
@@ -139,7 +141,7 @@ func backoff(ctx context.Context, failureCount int) {
 
 func (wp *WebPush) remove(q queue.Queue, qm queue.QueuedMessage) {
 	if err := q.Remove(qm); err != nil {
-		log.Println(wp, "error removing from the queue:", err)
+		wp.log.Println("[ERROR] Removing from the queue:", err)
 	}
 }
 
@@ -149,9 +151,9 @@ func (wp *WebPush) Serve(ctx context.Context, q queue.Queue, fc services.Feedbac
 		go wp.serveClient(ctx, q, fc)
 		wp.wg.Add(1)
 	}
-	log.Println(wp, "workers started")
+	wp.log.Println("Workers started")
 	wp.wg.Wait()
-	log.Println(wp, "workers stopped")
+	wp.log.Println("Workers stopped")
 
 	return
 }

@@ -55,7 +55,7 @@ func (s *Server) Shutdown(ctx context.Context) (err error) {
 	s.shuttingDown = true
 	s.server.Shutdown(ctx)
 	if err = s.server.Shutdown(ctx); err != nil {
-		log.Printf("Error shutting down Shove server: %v\n", err)
+		log.Printf("[ERROR] Shutting down Shove server: %v\n", err)
 		return
 	}
 	log.Println("Shove server stopped")

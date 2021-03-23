@@ -168,7 +168,7 @@ func (d *digester) sendBatch(b batch) {
 
 	err = d.config.send(b.emails[0].From, b.emails[0].To, body)
 	if err != nil {
-		d.config.Log.Println("[ERROR] Cannot send digest mail:", err)
+		d.config.Log.Println("[ERROR] Cannot send digest email:", err)
 		return
 	}
 }

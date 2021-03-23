@@ -18,16 +18,18 @@ type FCM struct {
 	transport *http.Transport
 	wg        sync.WaitGroup
 	apiKey    string
+	log       *log.Logger
 }
 
 // NewFCM ...
-func NewFCM(apiKey string) (fcm *FCM, err error) {
+func NewFCM(apiKey string, log *log.Logger) (fcm *FCM, err error) {
 	fcm = &FCM{
 		apiKey: apiKey,
 		transport: &http.Transport{
 			MaxIdleConns:    5,
 			IdleConnTimeout: 30 * time.Second,
 		},
+		log: log,
 	}
 	return
 }
@@ -50,13 +52,13 @@ func (fcm *FCM) serveClient(ctx context.Context, q queue.Queue, fc services.Feed
 	for ctx.Err() == nil {
 		qm, err := q.Get(ctx)
 		if err != nil {
-			log.Println(fcm, "error reading from queue:", err)
+			fcm.log.Println("[ERROR] Reading from queue:", err)
 			return
 		}
 		msg := qm.Message()
 		notif, err := fcm.convert(msg)
 		if err != nil {
-			log.Println(fcm, "bad message:", err)
+			fcm.log.Println("[ERROR] Bad message:", err)
 			fcm.remove(q, qm)
 			continue
 		}
@@ -65,11 +67,11 @@ func (fcm *FCM) serveClient(ctx context.Context, q queue.Queue, fc services.Feed
 			fcm.remove(q, qm)
 		} else {
 			if err = q.Requeue(qm); err != nil {
-				log.Println(fcm, "error putting back in the queue:", err)
+				fcm.log.Println("[ERROR] Putting back in the queue:", err)
 			}
 		}
 		if retry {
-			backoff(ctx, failureCount)
+			fcm.backoff(ctx, failureCount)
 			failureCount++
 
 		} else {
@@ -95,7 +97,7 @@ func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector
 
 	req, err := http.NewRequest("POST", "https://fcm.googleapis.com/fcm/send", bytes.NewBuffer(data))
 	if err != nil {
-		log.Println(fcm, "error creating request:", err)
+		fcm.log.Println("[ERROR] Creating request:", err)
 		return false, true
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -106,7 +108,7 @@ func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector
 		Transport: fcm.transport}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println(fcm, "error posting:", err)
+		fcm.log.Println("[ERROR] Posting:", err)
 		return false, true
 	}
 	duration := time.Now().Sub(startedAt)
@@ -117,25 +119,25 @@ func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector
 
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		log.Println(fcm, "rejected, status code:", resp.StatusCode)
+		fcm.log.Println("[ERROR] Rejected, status code:", resp.StatusCode)
 		return true, false
 	}
 	if resp.StatusCode >= 500 && resp.StatusCode < 600 {
-		log.Println(fcm, "upstream error, status code:", resp.StatusCode)
+		fcm.log.Println("[ERROR] Upstream error, status code:", resp.StatusCode)
 		return false, true
 	}
 
 	var fr fcmResponse
 	err = json.NewDecoder(resp.Body).Decode(&fr)
 	if err != nil {
-		log.Println(fcm, "error decoding response:", err)
+		fcm.log.Println("[ERROR] Decoding response:", err)
 		return false, true
 	}
 	regIDs := msg.RegistrationIDs
 	if len(regIDs) == 0 {
 		regIDs = append(regIDs, msg.To)
 	}
-	log.Println(fcm, "pushed, took", duration)
+	fcm.log.Println("Pushed, took", duration)
 	for i, fb := range fr.Results {
 		switch fb.Error {
 		case "":
@@ -154,16 +156,16 @@ func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector
 			// another request.
 			fallthrough
 		default:
-			log.Println(fcm, "error sending:", fb.Error)
+			fcm.log.Println("[ERROR] Sending:", fb.Error)
 		}
 	}
 	success = true
 	return true, false
 }
 
-func backoff(ctx context.Context, failureCount int) {
+func (fcm *FCM) backoff(ctx context.Context, failureCount int) {
 	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	log.Printf("Backing off for %s", sleep)
+	fcm.log.Printf("Backing off for %s", sleep)
 	ctx, cancel := context.WithTimeout(ctx, sleep)
 	defer cancel()
 	<-ctx.Done()
@@ -171,7 +173,7 @@ func backoff(ctx context.Context, failureCount int) {
 
 func (fcm *FCM) remove(q queue.Queue, qm queue.QueuedMessage) {
 	if err := q.Remove(qm); err != nil {
-		log.Println(fcm, "error removing from the queue:", err)
+		fcm.log.Println("[ERROR] Removing from the queue:", err)
 	}
 }
 
@@ -181,9 +183,9 @@ func (fcm *FCM) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCo
 		go fcm.serveClient(ctx, q, fc)
 		fcm.wg.Add(1)
 	}
-	log.Println(fcm, "workers started")
+	fcm.log.Println("Workers started")
 	fcm.wg.Wait()
-	log.Println(fcm, "workers stopped")
+	fcm.log.Println("Workers stopped")
 
 	return
 }

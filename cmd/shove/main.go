@@ -54,7 +54,7 @@ func main() {
 	s := server.NewServer(*apiAddr, qf)
 
 	if *apnsCertificate != "" {
-		apns, err := apns.NewAPNS(*apnsCertificate, true)
+		apns, err := apns.NewAPNS(*apnsCertificate, true, newServiceLog("apns"))
 		if err != nil {
 			log.Fatal("[ERROR] Setting up APNS service:", err)
 		}
@@ -64,7 +64,7 @@ func main() {
 	}
 
 	if *apnsSandboxCertificate != "" {
-		apns, err := apns.NewAPNS(*apnsSandboxCertificate, false)
+		apns, err := apns.NewAPNS(*apnsSandboxCertificate, false, newServiceLog("apns-sandbox"))
 		if err != nil {
 			log.Fatal("[ERROR] Setting up APNS sandbox service:", err)
 		}
@@ -74,7 +74,7 @@ func main() {
 	}
 
 	if *fcmAPIKey != "" {
-		fcm, err := fcm.NewFCM(*fcmAPIKey)
+		fcm, err := fcm.NewFCM(*fcmAPIKey, newServiceLog("fcm"))
 		if err != nil {
 			log.Fatal("[ERROR] Setting up FCM service:", err)
 		}
@@ -84,7 +84,7 @@ func main() {
 	}
 
 	if *webPushVAPIDPrivateKey != "" {
-		web, err := webpush.NewWebPush(*webPushVAPIDPublicKey, *webPushVAPIDPrivateKey)
+		web, err := webpush.NewWebPush(*webPushVAPIDPublicKey, *webPushVAPIDPrivateKey, newServiceLog("webpush"))
 		if err != nil {
 			log.Fatal("[ERROR] Setting up WebPush service:", err)
 		}
@@ -94,7 +94,7 @@ func main() {
 	}
 
 	if *telegramBotToken != "" {
-		tg, err := telegram.NewTelegramService(*telegramBotToken)
+		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLog("telegram"))
 		if err != nil {
 			log.Fatal("[ERROR] Setting up Telegram service:", err)
 		}

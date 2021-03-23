@@ -17,15 +17,19 @@ type APNS struct {
 	clients    []*apns2.Client
 	production bool
 	wg         sync.WaitGroup
+	log        *log.Logger
 }
 
 // NewAPNS ...
-func NewAPNS(pemFile string, production bool) (apns *APNS, err error) {
+func NewAPNS(pemFile string, production bool, log *log.Logger) (apns *APNS, err error) {
 	cert, err := certificate.FromPemFile(pemFile, "")
 	if err != nil {
 		return
 	}
-	apns = &APNS{production: production}
+	apns = &APNS{
+		production: production,
+		log:        log,
+	}
 	for i := 0; i < 4; i++ {
 		client := apns2.NewClient(cert)
 		if production {
@@ -63,14 +67,14 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 	for ctx.Err() == nil {
 		qm, err := q.Get(ctx)
 		if err != nil {
-			log.Println(apns, "error reading from queue:", err)
+			apns.log.Println("[ERROR] Reading from queue:", err)
 			return
 		}
 		var sent, retry bool
 		msg := qm.Message()
 		notif, err := apns.convert(msg)
 		if err != nil {
-			log.Println(apns, "bad message:", err)
+			apns.log.Println("[ERROR] Bad message:", err)
 			apns.remove(q, qm)
 			continue
 		}
@@ -78,14 +82,14 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 		resp, err := client.Push(notif)
 		duration := time.Now().Sub(t)
 		if err != nil {
-			log.Println(apns, "error pushing:", err)
+			apns.log.Println("[ERROR] Pushing:", err)
 			retry = true
 		} else {
 			status := resp.Reason
 			if status == "" {
 				status = "OK"
 			}
-			log.Printf("%s pushed (%s), took %s", apns, status, duration)
+			apns.log.Printf("Pushed (%s), took %s", status, duration)
 			sent = resp.Sent()
 			if resp.Reason == apns2.ReasonBadDeviceToken || resp.Reason == apns2.ReasonUnregistered {
 				fc.TokenInvalid(apns.ID(), notif.DeviceToken)
@@ -97,11 +101,11 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 			apns.remove(q, qm)
 		} else {
 			if err = q.Requeue(qm); err != nil {
-				log.Println(apns, "error putting back in the queue:", err)
+				apns.log.Println("[ERROR] Putting back in the queue:", err)
 			}
 		}
 		if retry {
-			backoff(ctx, failureCount)
+			apns.backoff(ctx, failureCount)
 			failureCount++
 
 		} else {
@@ -113,13 +117,13 @@ func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client
 
 func (apns *APNS) remove(q queue.Queue, qm queue.QueuedMessage) {
 	if err := q.Remove(qm); err != nil {
-		log.Println(apns, "error removing from the queue:", err)
+		apns.log.Println("[ERROR] Removing from the queue:", err)
 	}
 }
 
-func backoff(ctx context.Context, failureCount int) {
+func (apns *APNS) backoff(ctx context.Context, failureCount int) {
 	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	log.Printf("Backing off for %s", sleep)
+	apns.log.Printf("Backing off for %s", sleep)
 	ctx, cancel := context.WithTimeout(ctx, sleep)
 	defer cancel()
 	<-ctx.Done()
@@ -131,8 +135,8 @@ func (apns *APNS) Serve(ctx context.Context, q queue.Queue, fc services.Feedback
 	for id, client := range apns.clients {
 		go apns.serveClient(ctx, q, id, client, fc)
 	}
-	log.Println(apns, "workers started")
+	apns.log.Println("Workers started")
 	apns.wg.Wait()
-	log.Println(apns, "workers stopped")
+	apns.log.Println("Workers stopped")
 	return
 }
