@@ -6,22 +6,26 @@
 
 This is the replacement for [Pulsus](https://github.com/pennersr/pulsus) which has been steadily serving up to 100M push notifications. But, given that it was still using the binary APNS protocol it was due for an upgrade.
 
-## Features
+## Overview
 
+Design:
 - Asynchronous: a push client can just fire & forget.
-- Feedback: asynchronously receive information on invalid device tokens.
-- Services:
-  - APNS
-  - Email: supports automatic creation of email digests in case the rate limit
-    is exceeded
-  - FCM
-  - Web Push
-  - Telegram
 - Multiple workers per push service.
+- Less moving parts: when using Redis, you can push directly to the queue, bypassing the need for the Shove server to be up and running.
+
+Support push services:
+- APNS
+- Email: supports automatic creation of email digests in case the rate limit
+  is exceeded
+- FCM
+- Telegram
+- Web Push
+
+Features:
+- Feedback: asynchronously receive information on invalid device tokens.
 - Queueing: both in-memory and persistent via Redis.
 - Exponential back-off in case of failure.
-- Less moving parts: when using Redis, you can push directly to the queue, bypassing the need for the Shove server to be up and running.
-- Prometheus support
+- Prometheus support.
 
 
 ## Why?
