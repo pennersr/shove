@@ -27,6 +27,7 @@ var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
 var webPushVAPIDPublicKey = flag.String("webpush-vapid-public-key", "", "VAPID public key")
 var webPushVAPIDPrivateKey = flag.String("webpush-vapid-private-key", "", "VAPID public key")
 var telegramBotToken = flag.String("telegram-bot-token", "", "Telegram bot token")
+var telegramWorkers = flag.Int("telegram-workers", 2, "The number of workers pushing Telegram messages")
 var emailHost = flag.String("email-host", "", "Email host")
 var emailPort = flag.Int("email-port", 25, "Email port")
 var emailRateAmount = flag.Int("email-rate-amount", 0, "Email max. rate (amount)")
@@ -94,7 +95,7 @@ func main() {
 	}
 
 	if *telegramBotToken != "" {
-		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLog("telegram"))
+		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLog("telegram"), *telegramWorkers)
 		if err != nil {
 			log.Fatal("[ERROR] Setting up Telegram service:", err)
 		}

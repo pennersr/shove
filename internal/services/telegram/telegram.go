@@ -21,13 +21,15 @@ type TelegramService struct {
 	botToken string
 	wg       sync.WaitGroup
 	log      *log.Logger
+	workers  int
 }
 
 // NewTelegramService ...
-func NewTelegramService(botToken string, log *log.Logger) (tg *TelegramService, err error) {
+func NewTelegramService(botToken string, log *log.Logger, workers int) (tg *TelegramService, err error) {
 	tg = &TelegramService{
 		botToken: botToken,
 		log:      log,
+		workers:  workers,
 	}
 	return
 }
@@ -156,7 +158,7 @@ func (tg *TelegramService) backoff(ctx context.Context, failureCount int) {
 
 // Serve ...
 func (tg *TelegramService) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	for i := 0; i < 2; i++ {
+	for i := 0; i < tg.workers; i++ {
 		go tg.serveClient(ctx, q, fc)
 		tg.wg.Add(1)
 	}
