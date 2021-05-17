@@ -11,6 +11,8 @@ import (
 	"gitlab.com/pennersr/shove/internal/services"
 )
 
+const serviceID = "email"
+
 type EmailConfig struct {
 	EmailHost string
 	EmailPort int
@@ -34,7 +36,7 @@ func NewEmailService(config EmailConfig) (es *EmailService, err error) {
 }
 
 func (es *EmailService) ID() string {
-	return "email"
+	return serviceID
 }
 
 func (es *EmailService) String() string {
@@ -51,7 +53,7 @@ func (es *EmailService) push(q queue.Queue, qm queue.QueuedMessage, email email,
 	if err != nil {
 		return false, false
 	}
-	err = es.config.send(email.From, email.To, body)
+	err = es.config.send(email.From, email.To, body, fc)
 	if err != nil {
 		es.config.Log.Printf("[ERROR] Sending email failed: %s", err)
 		return false, false
@@ -63,7 +65,7 @@ func (es *EmailService) Serve(ctx context.Context, q queue.Queue, fc services.Fe
 	es.wg.Add(1)
 	go func() {
 		es.config.Log.Println("Digester started")
-		es.digester.serve()
+		es.digester.serve(fc)
 		es.config.Log.Println("Digester stopped")
 		es.wg.Add(-1)
 	}()

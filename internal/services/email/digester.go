@@ -1,9 +1,11 @@
 package email
 
 import (
-	"gitlab.com/pennersr/shove/internal/queue"
 	"sync"
 	"time"
+
+	"gitlab.com/pennersr/shove/internal/queue"
+	"gitlab.com/pennersr/shove/internal/services"
 )
 
 type batch struct {
@@ -143,19 +145,19 @@ func (d *digester) shutdown() {
 	}
 }
 
-func (d *digester) serve() {
+func (d *digester) serve(fc services.FeedbackCollector) {
 	for {
 		batch, stopped := d.getNextBatch()
 		if stopped {
 			d.shutdown()
 			return
 		}
-		d.sendBatch(batch)
+		d.sendBatch(batch, fc)
 
 	}
 }
 
-func (d *digester) sendBatch(b batch) {
+func (d *digester) sendBatch(b batch, fc services.FeedbackCollector) {
 	d.config.Log.Println("Sending digest email")
 	body, err := encodeEmailDigest(b.emails)
 	if err != nil {
@@ -166,7 +168,7 @@ func (d *digester) sendBatch(b batch) {
 	d.recordSend(b.key)
 	d.cond.L.Unlock()
 
-	err = d.config.send(b.emails[0].From, b.emails[0].To, body)
+	err = d.config.send(b.emails[0].From, b.emails[0].To, body, fc)
 	if err != nil {
 		d.config.Log.Println("[ERROR] Cannot send digest email:", err)
 		return

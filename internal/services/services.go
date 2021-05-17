@@ -11,7 +11,7 @@ import (
 type FeedbackCollector interface {
 	TokenInvalid(serviceID, token string)
 	ReplaceToken(serviceID, token, replacement string)
-	CountPush(serviceiD string, success bool, duration time.Duration)
+	CountPush(serviceID string, success bool, duration time.Duration)
 }
 
 // PushService ...
