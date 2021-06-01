@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"gitlab.com/pennersr/shove/internal/services"
 )
 
 type telegramMessage struct {
@@ -13,7 +15,7 @@ type telegramMessage struct {
 	ChatID  string
 }
 
-func (tg *TelegramService) convert(data []byte) (*telegramMessage, error) {
+func (tg *TelegramService) ConvertMessage(data []byte) (services.ServiceMessage, error) {
 	var msg telegramMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, err
@@ -37,6 +39,6 @@ func (tg *TelegramService) convert(data []byte) (*telegramMessage, error) {
 
 // Validate ...
 func (tg *TelegramService) Validate(data []byte) error {
-	_, err := tg.convert(data)
+	_, err := tg.ConvertMessage(data)
 	return err
 }

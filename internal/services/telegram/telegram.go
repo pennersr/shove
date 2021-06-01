@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math"
 	"net/http"
 	"strings"
 	"sync"
@@ -22,6 +21,7 @@ type TelegramService struct {
 	wg       sync.WaitGroup
 	log      *log.Logger
 	workers  int
+	pump     *services.Pump
 }
 
 // NewTelegramService ...
@@ -31,6 +31,7 @@ func NewTelegramService(botToken string, log *log.Logger, workers int) (tg *Tele
 		log:      log,
 		workers:  workers,
 	}
+	tg.pump = services.NewPump(workers, log, tg)
 	return
 }
 
@@ -45,43 +46,16 @@ func (tg *TelegramService) String() string {
 	return "Telegram"
 }
 
-func (tg *TelegramService) serveClient(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) {
-	defer func() {
-		tg.wg.Done()
-	}()
-	failureCount := 0
-	for ctx.Err() == nil {
-		qm, err := q.Get(ctx)
-		if err != nil {
-			tg.log.Println("[ERROR] Reading from queue:", err)
-			return
-		}
-		msg := qm.Message()
-		tgmsg, err := tg.convert(msg)
-		if err != nil {
-			tg.log.Println("[ERROR] Bad message:", err)
-			tg.remove(q, qm)
-			continue
-		}
-		success, retry := tg.push(tgmsg, msg, fc)
-		if success || !retry {
-			tg.remove(q, qm)
-		} else {
-			if err = q.Requeue(qm); err != nil {
-				tg.log.Println("[ERROR] Putting back in the queue:", err)
-			}
-		}
-		if retry {
-			tg.backoff(ctx, failureCount)
-			failureCount++
-
-		} else {
-			failureCount = 0
-		}
+func (tg *TelegramService) NewClient() (services.PumpClient, error) {
+	client := &http.Client{
+		Timeout: time.Duration(15 * time.Second),
 	}
+	return client, nil
 }
 
-func (tg *TelegramService) push(msg *telegramMessage, data []byte, fc services.FeedbackCollector) (done, retry bool) {
+func (tg *TelegramService) PushMessage(pclient services.PumpClient, smsg services.ServiceMessage, fc services.FeedbackCollector) (status services.PushStatus) {
+	client := pclient.(*http.Client)
+	msg := smsg.(*telegramMessage)
 	startedAt := time.Now()
 	var success bool
 
@@ -89,14 +63,13 @@ func (tg *TelegramService) push(msg *telegramMessage, data []byte, fc services.F
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(msg.Payload))
 	if err != nil {
 		tg.log.Println("[ERROR] Creating request:", err)
-		return false, true
+		return services.PushStatusHardFail
 	}
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{Timeout: time.Duration(15 * time.Second)}
 	resp, err := client.Do(req)
 	if err != nil {
 		tg.log.Println("[ERROR] Posting:", err)
-		return false, true
+		return services.PushStatusTempFail
 	}
 	duration := time.Now().Sub(startedAt)
 
@@ -108,7 +81,7 @@ func (tg *TelegramService) push(msg *telegramMessage, data []byte, fc services.F
 
 	if resp.StatusCode == 429 {
 		tg.log.Println("[ERROR] Throttled, too many requests: 429")
-		return false, true
+		return services.PushStatusTempFail
 	}
 
 	var respData struct {
@@ -120,7 +93,7 @@ func (tg *TelegramService) push(msg *telegramMessage, data []byte, fc services.F
 	err = json.NewDecoder(resp.Body).Decode(&respData)
 	if err != nil {
 		tg.log.Println("[ERROR] Decoding response:", err)
-		return false, true
+		return services.PushStatusTempFail
 	}
 
 	// It's a bit odd that an invalid chat ID results in a 400 instead of a
@@ -131,40 +104,17 @@ func (tg *TelegramService) push(msg *telegramMessage, data []byte, fc services.F
 	}
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 		tg.log.Printf("[ERROR] Rejected: %s (%d), HTTP status: %d", respData.Description, respData.ErrorCode, resp.StatusCode)
-		return true, false
+		return services.PushStatusHardFail
 	}
 	if resp.StatusCode >= 500 && resp.StatusCode < 600 {
 		tg.log.Println("[ERROR] Upstream HTTP status:", resp.StatusCode)
-		return false, true
+		return services.PushStatusTempFail
 	}
 	tg.log.Println("Pushed, took", duration)
-	success = true
-	return true, false
-}
-
-func (tg *TelegramService) remove(q queue.Queue, qm queue.QueuedMessage) {
-	if err := q.Remove(qm); err != nil {
-		tg.log.Println("[ERROR] Removing from the queue:", err)
-	}
-}
-
-func (tg *TelegramService) backoff(ctx context.Context, failureCount int) {
-	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	tg.log.Printf("Backing off for %s", sleep)
-	ctx, cancel := context.WithTimeout(ctx, sleep)
-	defer cancel()
-	<-ctx.Done()
+	return services.PushStatusSuccess
 }
 
 // Serve ...
 func (tg *TelegramService) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	for i := 0; i < tg.workers; i++ {
-		go tg.serveClient(ctx, q, fc)
-		tg.wg.Add(1)
-	}
-	tg.log.Println("Workers started")
-	tg.wg.Wait()
-	tg.log.Println("Workers stopped")
-
-	return
+	return tg.pump.Serve(ctx, q, fc)
 }
