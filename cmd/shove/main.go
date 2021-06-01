@@ -7,6 +7,7 @@ import (
 	"gitlab.com/pennersr/shove/internal/queue/memory"
 	"gitlab.com/pennersr/shove/internal/queue/redis"
 	"gitlab.com/pennersr/shove/internal/server"
+	"gitlab.com/pennersr/shove/internal/services"
 	"gitlab.com/pennersr/shove/internal/services/apns"
 	"gitlab.com/pennersr/shove/internal/services/email"
 	"gitlab.com/pennersr/shove/internal/services/fcm"
@@ -28,6 +29,8 @@ var webPushVAPIDPublicKey = flag.String("webpush-vapid-public-key", "", "VAPID p
 var webPushVAPIDPrivateKey = flag.String("webpush-vapid-private-key", "", "VAPID public key")
 var telegramBotToken = flag.String("telegram-bot-token", "", "Telegram bot token")
 var telegramWorkers = flag.Int("telegram-workers", 2, "The number of workers pushing Telegram messages")
+var telegramRateAmount = flag.Int("telegram-rate-amount", 0, "Telegram max. rate (amount)")
+var telegramRatePer = flag.Int("telegram-rate-per", 0, "Telegram max. rate (per seconds)")
 var emailHost = flag.String("email-host", "", "Email host")
 var emailPort = flag.Int("email-port", 25, "Email port")
 var emailRateAmount = flag.Int("email-rate-amount", 0, "Email max. rate (amount)")
@@ -95,7 +98,10 @@ func main() {
 	}
 
 	if *telegramBotToken != "" {
-		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLog("telegram"), *telegramWorkers)
+		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLog("telegram"), *telegramWorkers, services.DigestConfig{
+			RateMax: *telegramRateAmount,
+			RatePer: time.Second * time.Duration(*telegramRatePer),
+		})
 		if err != nil {
 			log.Fatal("[ERROR] Setting up Telegram service:", err)
 		}

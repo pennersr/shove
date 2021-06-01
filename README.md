@@ -13,12 +13,13 @@ Design:
 - Multiple workers per push service.
 - Less moving parts: when using Redis, you can push directly to the queue, bypassing the need for the Shove server to be up and running.
 
-Support push services:
+Supported push services:
 - APNS
 - Email: supports automatic creation of email digests in case the rate limit
   is exceeded
 - FCM
-- Telegram
+- Telegram: supports squashing multiple messages into one in case the rate limit
+  is exceeded
 - Web Push
 
 Features:

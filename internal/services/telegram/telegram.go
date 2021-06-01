@@ -25,14 +25,18 @@ type TelegramService struct {
 }
 
 // NewTelegramService ...
-func NewTelegramService(botToken string, log *log.Logger, workers int) (tg *TelegramService, err error) {
+func NewTelegramService(botToken string, log *log.Logger, workers int, digest services.DigestConfig) (tg *TelegramService, err error) {
 	tg = &TelegramService{
 		botToken: botToken,
 		log:      log,
 		workers:  workers,
 	}
-	tg.pump = services.NewPump(workers, log, tg)
+	tg.pump = services.NewPump(workers, digest, tg)
 	return
+}
+
+func (tg *TelegramService) Logger() *log.Logger {
+	return tg.log
 }
 
 // ID ...
@@ -53,14 +57,32 @@ func (tg *TelegramService) NewClient() (services.PumpClient, error) {
 	return client, nil
 }
 
+func (tg *TelegramService) PushDigest(pclient services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) (status services.PushStatus) {
+	client := pclient.(*http.Client)
+	msgs := make([]telegramMessage, len(smsgs))
+	for i, smsg := range smsgs {
+		msgs[i] = smsg.(telegramMessage)
+	}
+	dmsg, err := createDigest(msgs)
+	if err != nil {
+		tg.log.Println("[ERROR] Error creating digest:", err)
+		return services.PushStatusHardFail
+	}
+	return tg.pushMessage(client, dmsg.Method, dmsg.parsedPayload.ChatID, dmsg.Payload, fc)
+}
+
 func (tg *TelegramService) PushMessage(pclient services.PumpClient, smsg services.ServiceMessage, fc services.FeedbackCollector) (status services.PushStatus) {
 	client := pclient.(*http.Client)
-	msg := smsg.(*telegramMessage)
+	msg := smsg.(telegramMessage)
+	return tg.pushMessage(client, msg.Method, msg.parsedPayload.ChatID, msg.Payload, fc)
+}
+
+func (tg *TelegramService) pushMessage(client *http.Client, method string, chatID string, payload json.RawMessage, fc services.FeedbackCollector) (status services.PushStatus) {
 	startedAt := time.Now()
 	var success bool
 
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/%s", tg.botToken, msg.Method)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(msg.Payload))
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/%s", tg.botToken, method)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	if err != nil {
 		tg.log.Println("[ERROR] Creating request:", err)
 		return services.PushStatusHardFail
@@ -100,7 +122,7 @@ func (tg *TelegramService) PushMessage(pclient services.PumpClient, smsg service
 	// special response code {"ok":false,"error_code":400,"description":"Bad
 	// Request: chat not found"}
 	if respData.ErrorCode == 400 && strings.Contains(respData.Description, "chat not found") {
-		fc.TokenInvalid(tg.ID(), msg.ChatID)
+		fc.TokenInvalid(tg.ID(), chatID)
 	}
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 		tg.log.Printf("[ERROR] Rejected: %s (%d), HTTP status: %d", respData.Description, respData.ErrorCode, resp.StatusCode)
