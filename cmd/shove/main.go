@@ -23,6 +23,7 @@ import (
 var apiAddr = flag.String("api-addr", ":8322", "API address to listen to")
 var apnsCertificate = flag.String("apns-certificate-path", "", "APNS certificate path")
 var apnsSandboxCertificate = flag.String("apns-sandbox-certificate-path", "", "APNS sandbox certificate path")
+var apnsWorkers = flag.Int("apns-workers", 4, "The number of workers pushing APNS messages")
 var fcmAPIKey = flag.String("fcm-api-key", "", "FCM API key")
 var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
 var webPushVAPIDPublicKey = flag.String("webpush-vapid-public-key", "", "VAPID public key")
@@ -58,7 +59,7 @@ func main() {
 	s := server.NewServer(*apiAddr, qf)
 
 	if *apnsCertificate != "" {
-		apns, err := apns.NewAPNS(*apnsCertificate, true, newServiceLog("apns"))
+		apns, err := apns.NewAPNS(*apnsCertificate, true, newServiceLog("apns"), *apnsWorkers)
 		if err != nil {
 			log.Fatal("[ERROR] Setting up APNS service:", err)
 		}
@@ -68,7 +69,7 @@ func main() {
 	}
 
 	if *apnsSandboxCertificate != "" {
-		apns, err := apns.NewAPNS(*apnsSandboxCertificate, false, newServiceLog("apns-sandbox"))
+		apns, err := apns.NewAPNS(*apnsSandboxCertificate, false, newServiceLog("apns-sandbox"), *apnsWorkers)
 		if err != nil {
 			log.Fatal("[ERROR] Setting up APNS sandbox service:", err)
 		}

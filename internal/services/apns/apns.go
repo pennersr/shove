@@ -2,43 +2,52 @@ package apns
 
 import (
 	"context"
+	"crypto/tls"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
 	"log"
-	"math"
 	"sync"
 	"time"
 )
 
 // APNS ...
 type APNS struct {
-	clients    []*apns2.Client
 	production bool
 	wg         sync.WaitGroup
 	log        *log.Logger
+	pump       *services.Pump
+	cert       tls.Certificate
 }
 
 // NewAPNS ...
-func NewAPNS(pemFile string, production bool, log *log.Logger) (apns *APNS, err error) {
+func NewAPNS(pemFile string, production bool, log *log.Logger, workers int) (apns *APNS, err error) {
 	cert, err := certificate.FromPemFile(pemFile, "")
 	if err != nil {
 		return
 	}
 	apns = &APNS{
+		cert:       cert,
 		production: production,
 		log:        log,
 	}
-	for i := 0; i < 4; i++ {
-		client := apns2.NewClient(cert)
-		if production {
-			client.Production()
-		} else {
-			client.Development()
-		}
-		apns.clients = append(apns.clients, client)
+	apns.pump = services.NewPump(workers, services.DigestConfig{}, apns)
+	return
+}
+
+func (apns *APNS) Logger() *log.Logger {
+	return apns.log
+}
+
+func (apns *APNS) NewClient() (pclient services.PumpClient, err error) {
+	client := apns2.NewClient(apns.cert)
+	if apns.production {
+		client.Production()
+	} else {
+		client.Development()
 	}
+	pclient = client
 	return
 }
 
@@ -59,84 +68,44 @@ func (apns *APNS) String() string {
 	return "APNS-sandbox"
 }
 
-func (apns *APNS) serveClient(ctx context.Context, q queue.Queue, id int, client *apns2.Client, fc services.FeedbackCollector) {
-	defer func() {
-		apns.wg.Done()
-	}()
-	failureCount := 0
-	for ctx.Err() == nil {
-		qm, err := q.Get(ctx)
-		if err != nil {
-			apns.log.Println("[ERROR] Reading from queue:", err)
-			return
-		}
-		var sent, retry bool
-		msg := qm.Message()
-		notif, err := apns.convert(msg)
-		if err != nil {
-			apns.log.Println("[ERROR] Bad message:", err)
-			apns.remove(q, qm)
-			continue
-		}
-		t := time.Now()
-		resp, err := client.Push(notif)
-		duration := time.Now().Sub(t)
-		if err != nil {
-			apns.log.Println("[ERROR] Pushing:", err)
-			retry = true
-		} else {
-			status := resp.Reason
-			if status == "" {
-				status = "OK"
-			}
-			apns.log.Printf("Pushed (%s), took %s", status, duration)
-			sent = resp.Sent()
-			if resp.Reason == apns2.ReasonBadDeviceToken || resp.Reason == apns2.ReasonUnregistered {
-				fc.TokenInvalid(apns.ID(), notif.DeviceToken)
-			}
-			retry = resp.StatusCode >= 500
-		}
-		fc.CountPush(apns.ID(), sent, duration)
-		if sent || !retry {
-			apns.remove(q, qm)
-		} else {
-			if err = q.Requeue(qm); err != nil {
-				apns.log.Println("[ERROR] Putting back in the queue:", err)
-			}
-		}
-		if retry {
-			apns.backoff(ctx, failureCount)
-			failureCount++
-
-		} else {
-			failureCount = 0
-
-		}
-	}
+func (apns *APNS) PushDigest(client services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
+	panic("not implemented")
 }
 
-func (apns *APNS) remove(q queue.Queue, qm queue.QueuedMessage) {
-	if err := q.Remove(qm); err != nil {
-		apns.log.Println("[ERROR] Removing from the queue:", err)
+func (apns *APNS) PushMessage(pclient services.PumpClient, smsg services.ServiceMessage, fc services.FeedbackCollector) (status services.PushStatus) {
+	client := pclient.(*apns2.Client)
+	notif := smsg.(apnsNotification)
+	t := time.Now()
+	resp, err := client.Push(notif.notification)
+	duration := time.Now().Sub(t)
+	sent := false
+	if err != nil {
+		apns.log.Println("[ERROR] Pushing:", err)
+		status = services.PushStatusTempFail
+	} else {
+		reason := resp.Reason
+		if reason == "" {
+			reason = "OK"
+		}
+		apns.log.Printf("Pushed (%s), took %s", reason, duration)
+		sent = resp.Sent()
+		if resp.Reason == apns2.ReasonBadDeviceToken || resp.Reason == apns2.ReasonUnregistered {
+			fc.TokenInvalid(apns.ID(), notif.notification.DeviceToken)
+		}
+		retry := resp.StatusCode >= 500
+		if sent {
+			status = services.PushStatusSuccess
+		} else if retry {
+			status = services.PushStatusTempFail
+		} else {
+			status = services.PushStatusHardFail
+		}
 	}
-}
-
-func (apns *APNS) backoff(ctx context.Context, failureCount int) {
-	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	apns.log.Printf("Backing off for %s", sleep)
-	ctx, cancel := context.WithTimeout(ctx, sleep)
-	defer cancel()
-	<-ctx.Done()
+	fc.CountPush(apns.ID(), sent, duration)
+	return
 }
 
 // Serve ...
 func (apns *APNS) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	apns.wg.Add(len(apns.clients))
-	for id, client := range apns.clients {
-		go apns.serveClient(ctx, q, id, client, fc)
-	}
-	apns.log.Println("Workers started")
-	apns.wg.Wait()
-	apns.log.Println("Workers stopped")
-	return
+	return apns.pump.Serve(ctx, q, fc)
 }

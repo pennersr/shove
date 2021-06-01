@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/sideshow/apns2"
+	"gitlab.com/pennersr/shove/internal/services"
 	"time"
 )
 
@@ -13,7 +14,15 @@ type apnsMessage struct {
 	Payload json.RawMessage            `json:"payload,omitempty"`
 }
 
-func (apns *APNS) convert(data []byte) (notif *apns2.Notification, err error) {
+type apnsNotification struct {
+	notification *apns2.Notification
+}
+
+func (notif apnsNotification) GetDigestTarget() string {
+	panic("not implemented")
+}
+
+func (apns *APNS) ConvertMessage(data []byte) (smsg services.ServiceMessage, err error) {
 	var msg apnsMessage
 	if err = json.Unmarshal(data, &msg); err != nil {
 		return
@@ -23,7 +32,7 @@ func (apns *APNS) convert(data []byte) (notif *apns2.Notification, err error) {
 		return
 	}
 
-	notif = new(apns2.Notification)
+	notif := new(apns2.Notification)
 	notif.DeviceToken = msg.Token
 	topic, ok := msg.Headers["apns-topic"]
 	if !ok {
@@ -58,11 +67,12 @@ func (apns *APNS) convert(data []byte) (notif *apns2.Notification, err error) {
 		notif.Expiration = time.Unix(epoch, 0)
 	}
 	notif.Payload = msg.Payload
+	smsg = apnsNotification{notification: notif}
 	return
 }
 
 // Validate ...
 func (apns *APNS) Validate(data []byte) (err error) {
-	_, err = apns.convert(data)
+	_, err = apns.ConvertMessage(data)
 	return
 }
