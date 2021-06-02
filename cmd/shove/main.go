@@ -115,9 +115,11 @@ func main() {
 		config := email.EmailConfig{
 			EmailHost: *emailHost,
 			EmailPort: *emailPort,
-			RateMax:   *emailRateAmount,
-			RatePer:   time.Second * time.Duration(*emailRatePer),
-			Log:       newServiceLog("email"),
+			Digest: services.DigestConfig{
+				RateMax: *emailRateAmount,
+				RatePer: time.Second * time.Duration(*emailRatePer),
+			},
+			Log: newServiceLog("email"),
 		}
 		email, err := email.NewEmailService(config)
 		if err != nil {

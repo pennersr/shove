@@ -3,9 +3,6 @@ package email
 import (
 	"context"
 	"log"
-	"math"
-	"sync"
-	"time"
 
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
@@ -16,23 +13,25 @@ const serviceID = "email"
 type EmailConfig struct {
 	EmailHost string
 	EmailPort int
-	RateMax   int
-	RatePer   time.Duration
+	Digest    services.DigestConfig
 	Log       *log.Logger
 }
 
 type EmailService struct {
-	config   EmailConfig
-	digester digester
-	wg       sync.WaitGroup
+	config EmailConfig
+	pump   *services.Pump
 }
 
 func NewEmailService(config EmailConfig) (es *EmailService, err error) {
 	es = &EmailService{
 		config: config,
 	}
-	es.digester.init(config)
+	es.pump = services.NewPump(1, config.Digest, es)
 	return
+}
+
+func (es *EmailService) Logger() *log.Logger {
+	return es.config.Log
 }
 
 func (es *EmailService) ID() string {
@@ -43,81 +42,40 @@ func (es *EmailService) String() string {
 	return "Email"
 }
 
-func (es *EmailService) push(q queue.Queue, qm queue.QueuedMessage, email email, data []byte, fc services.FeedbackCollector) (success, retry bool) {
-	digested := es.digester.prepareToMail(q, qm, email)
-	if digested {
-		return true, false
+func (es *EmailService) NewClient() (services.PumpClient, error) {
+	return nil, nil
+}
+
+func (es *EmailService) PushDigest(client services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
+	emails := make([]email, len(smsgs))
+	for i, smsg := range smsgs {
+		emails[i] = smsg.(email)
 	}
+	body, err := encodeEmailDigest(emails)
+	if err != nil {
+		return services.PushStatusHardFail
+	}
+	return es.push(emails[0].From, emails[0].To, body, fc)
+}
+
+func (es *EmailService) PushMessage(pclient services.PumpClient, smsg services.ServiceMessage, fc services.FeedbackCollector) (status services.PushStatus) {
+	email := smsg.(email)
 	es.config.Log.Println("Sending email")
 	body, err := encodeEmail(email)
 	if err != nil {
-		return false, false
+		return services.PushStatusHardFail
 	}
-	err = es.config.send(email.From, email.To, body, fc)
+	return es.push(email.From, email.To, body, fc)
+}
+func (es *EmailService) push(from string, to []string, body []byte, fc services.FeedbackCollector) services.PushStatus {
+	err := es.config.send(from, to, body, fc)
 	if err != nil {
 		es.config.Log.Printf("[ERROR] Sending email failed: %s", err)
-		return false, false
+		return services.PushStatusHardFail // TODO: smtp down is not a hard failure
 	}
-	return
+	return services.PushStatusSuccess
 }
 
 func (es *EmailService) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	es.wg.Add(1)
-	go func() {
-		es.config.Log.Println("Digester started")
-		es.digester.serve(fc)
-		es.config.Log.Println("Digester stopped")
-		es.wg.Add(-1)
-	}()
-	es.config.Log.Println("Worker started")
-	failureCount := 0
-	for ctx.Err() == nil {
-		var qm queue.QueuedMessage
-		qm, err := q.Get(ctx)
-		if err != nil {
-			es.config.Log.Printf("[ERROR] Reading from queue: %s", err)
-			es.digester.requestShutdown()
-			break
-		}
-		msg := qm.Message()
-		emsg, err := es.convert(msg)
-		if err != nil {
-			es.config.Log.Printf("[ERROR] Bad message: %s", err)
-			es.remove(q, qm)
-			continue
-		}
-		success, retry := es.push(q, qm, emsg, msg, fc)
-		if success || !retry {
-			es.remove(q, qm)
-		} else {
-			if err = q.Requeue(qm); err != nil {
-				es.config.Log.Printf("[ERROR] Requeue failed: %s", err)
-			}
-		}
-		if retry {
-			es.backoff(ctx, failureCount)
-			failureCount++
-
-		} else {
-			failureCount = 0
-
-		}
-	}
-	es.wg.Wait()
-	es.config.Log.Println("Worker stopped")
-	return
-}
-
-func (es *EmailService) backoff(ctx context.Context, failureCount int) {
-	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	es.config.Log.Printf("Backing off for %s", sleep)
-	ctx, cancel := context.WithTimeout(ctx, sleep)
-	defer cancel()
-	<-ctx.Done()
-}
-
-func (es *EmailService) remove(q queue.Queue, qm queue.QueuedMessage) {
-	if err := q.Remove(qm); err != nil {
-		es.config.Log.Printf("[ERROR] %s: remove from queue failed:", err)
-	}
+	return es.pump.Serve(ctx, q, fc)
 }

@@ -3,6 +3,7 @@ package email
 import (
 	"encoding/json"
 	"errors"
+	"gitlab.com/pennersr/shove/internal/services"
 )
 
 type attachment struct {
@@ -22,7 +23,11 @@ type email struct {
 	} `json:"digest"`
 }
 
-func (es *EmailService) convert(data []byte) (email, error) {
+func (em email) GetDigestTarget() string {
+	return em.To[0]
+}
+
+func (es *EmailService) ConvertMessage(data []byte) (services.ServiceMessage, error) {
 	var em email
 	if err := json.Unmarshal(data, &em); err != nil {
 		return em, err
@@ -43,6 +48,6 @@ func (es *EmailService) convert(data []byte) (email, error) {
 }
 
 func (es *EmailService) Validate(data []byte) error {
-	_, err := es.convert(data)
+	_, err := es.ConvertMessage(data)
 	return err
 }
