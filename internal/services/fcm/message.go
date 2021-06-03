@@ -12,7 +12,7 @@ type fcmMessage struct {
 	rawData         []byte
 }
 
-func (fcmMessage) GetDigestTarget() string {
+func (fcmMessage) GetSquashKey() string {
 	panic("not implemented")
 }
 

@@ -27,6 +27,7 @@ Features:
 - Queueing: both in-memory and persistent via Redis.
 - Exponential back-off in case of failure.
 - Prometheus support.
+- Squashing of messages in case rate limits are exceeded.
 
 
 ## Why?

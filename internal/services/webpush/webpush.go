@@ -28,7 +28,7 @@ func NewWebPush(vapidPub, vapidPvt string, log *log.Logger) (wp *WebPush, err er
 		vapidPublicKey:  vapidPub,
 		log:             log,
 	}
-	wp.pump = services.NewPump(8, services.DigestConfig{}, wp)
+	wp.pump = services.NewPump(8, services.SquashConfig{}, wp)
 	return
 }
 
@@ -57,7 +57,7 @@ func (wp *WebPush) String() string {
 	return "WebPush"
 }
 
-func (wp *WebPush) PushDigest(client services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
+func (wp *WebPush) SquashAndPushMessage(client services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
 	panic("not implemented")
 }
 

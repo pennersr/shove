@@ -23,7 +23,7 @@ type email struct {
 	} `json:"digest"`
 }
 
-func (em email) GetDigestTarget() string {
+func (em email) GetSquashKey() string {
 	return em.To[0]
 }
 

@@ -14,11 +14,11 @@ type Pump struct {
 	wg       sync.WaitGroup
 	adapter  PumpAdapter
 	workers  int
-	digester *digester
+	squasher *squasher
 }
 
 type ServiceMessage interface {
-	GetDigestTarget() string
+	GetSquashKey() string
 }
 
 type PushStatus int
@@ -39,26 +39,26 @@ type PumpAdapter interface {
 	ConvertMessage([]byte) (ServiceMessage, error)
 	NewClient() (PumpClient, error)
 	PushMessage(client PumpClient, smsg ServiceMessage, fc FeedbackCollector) PushStatus
-	PushDigest(client PumpClient, smsgs []ServiceMessage, fc FeedbackCollector) PushStatus
+	SquashAndPushMessage(client PumpClient, smsgs []ServiceMessage, fc FeedbackCollector) PushStatus
 	Logger() *log.Logger
 }
 
 // NewPump
-func NewPump(workers int, digest DigestConfig, adapter PumpAdapter) (p *Pump) {
+func NewPump(workers int, squash SquashConfig, adapter PumpAdapter) (p *Pump) {
 	p = &Pump{
 		workers: workers,
 		adapter: adapter,
 	}
-	if digest.RateMax > 0 {
-		p.digester = newDigester(digest, adapter)
+	if squash.RateMax > 0 {
+		p.squasher = newSquasher(squash, adapter)
 	}
 	return p
 }
 
-func (p *Pump) push(q queue.Queue, qm queue.QueuedMessage, client PumpClient, smsg ServiceMessage, fc FeedbackCollector) (status PushStatus, digested bool) {
-	if p.digester != nil {
-		digested = p.digester.prepareToPush(q, qm, client, smsg)
-		if digested {
+func (p *Pump) push(q queue.Queue, qm queue.QueuedMessage, client PumpClient, smsg ServiceMessage, fc FeedbackCollector) (status PushStatus, squashed bool) {
+	if p.squasher != nil {
+		squashed = p.squasher.prepareToPush(q, qm, client, smsg)
+		if squashed {
 			return
 		}
 	}
@@ -85,8 +85,8 @@ func (p *Pump) serveClient(ctx context.Context, q queue.Queue, client PumpClient
 			removeFromQueue(q, qm, log)
 			continue
 		}
-		status, digested := p.push(q, qm, client, smsg, fc)
-		if digested {
+		status, squashed := p.push(q, qm, client, smsg, fc)
+		if squashed {
 			// Message should remain in pending queue
 			continue
 		}
@@ -123,12 +123,12 @@ func (p *Pump) backoff(ctx context.Context, failureCount int) {
 
 func (p *Pump) Serve(ctx context.Context, q queue.Queue, fc FeedbackCollector) (err error) {
 	log := p.adapter.Logger()
-	if p.digester != nil {
+	if p.squasher != nil {
 		p.wg.Add(1)
 		go func() {
-			log.Println("Digester started")
-			p.digester.serve(fc)
-			log.Println("Digester stopped")
+			log.Println("Squasher started")
+			p.squasher.serve(fc)
+			log.Println("Squasher stopped")
 			p.wg.Add(-1)
 		}()
 	}
@@ -143,8 +143,8 @@ func (p *Pump) Serve(ctx context.Context, q queue.Queue, fc FeedbackCollector) (
 	for i := 0; i < p.workers; i++ {
 		go func(client PumpClient) {
 			p.serveClient(ctx, q, client, fc)
-			if p.digester != nil {
-				p.digester.requestShutdown()
+			if p.squasher != nil {
+				p.squasher.requestShutdown()
 			}
 		}(clients[i])
 		p.wg.Add(1)

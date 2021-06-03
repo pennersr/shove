@@ -32,7 +32,7 @@ func NewAPNS(pemFile string, production bool, log *log.Logger, workers int) (apn
 		production: production,
 		log:        log,
 	}
-	apns.pump = services.NewPump(workers, services.DigestConfig{}, apns)
+	apns.pump = services.NewPump(workers, services.SquashConfig{}, apns)
 	return
 }
 
@@ -68,7 +68,7 @@ func (apns *APNS) String() string {
 	return "APNS-sandbox"
 }
 
-func (apns *APNS) PushDigest(client services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
+func (apns *APNS) SquashAndPushMessage(client services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
 	panic("not implemented")
 }
 

@@ -18,7 +18,7 @@ type apnsNotification struct {
 	notification *apns2.Notification
 }
 
-func (notif apnsNotification) GetDigestTarget() string {
+func (notif apnsNotification) GetSquashKey() string {
 	panic("not implemented")
 }
 

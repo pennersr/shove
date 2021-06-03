@@ -25,13 +25,13 @@ type TelegramService struct {
 }
 
 // NewTelegramService ...
-func NewTelegramService(botToken string, log *log.Logger, workers int, digest services.DigestConfig) (tg *TelegramService, err error) {
+func NewTelegramService(botToken string, log *log.Logger, workers int, squash services.SquashConfig) (tg *TelegramService, err error) {
 	tg = &TelegramService{
 		botToken: botToken,
 		log:      log,
 		workers:  workers,
 	}
-	tg.pump = services.NewPump(workers, digest, tg)
+	tg.pump = services.NewPump(workers, squash, tg)
 	return
 }
 
@@ -57,15 +57,15 @@ func (tg *TelegramService) NewClient() (services.PumpClient, error) {
 	return client, nil
 }
 
-func (tg *TelegramService) PushDigest(pclient services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) (status services.PushStatus) {
+func (tg *TelegramService) SquashAndPushMessage(pclient services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) (status services.PushStatus) {
 	client := pclient.(*http.Client)
 	msgs := make([]telegramMessage, len(smsgs))
 	for i, smsg := range smsgs {
 		msgs[i] = smsg.(telegramMessage)
 	}
-	dmsg, err := createDigest(msgs)
+	dmsg, err := squashMessages(msgs)
 	if err != nil {
-		tg.log.Println("[ERROR] Error creating digest:", err)
+		tg.log.Println("[ERROR] Error squashing:", err)
 		return services.PushStatusHardFail
 	}
 	return tg.pushMessage(client, dmsg.Method, dmsg.parsedPayload.ChatID, dmsg.Payload, fc)

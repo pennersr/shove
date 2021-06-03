@@ -20,7 +20,7 @@ type webPushMessage struct {
 	subscription wpg.Subscription
 }
 
-func (msg webPushMessage) GetDigestTarget() string {
+func (msg webPushMessage) GetSquashKey() string {
 	panic("not implemented")
 }
 

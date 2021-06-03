@@ -99,7 +99,7 @@ func main() {
 	}
 
 	if *telegramBotToken != "" {
-		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLog("telegram"), *telegramWorkers, services.DigestConfig{
+		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLog("telegram"), *telegramWorkers, services.SquashConfig{
 			RateMax: *telegramRateAmount,
 			RatePer: time.Second * time.Duration(*telegramRatePer),
 		})
@@ -115,7 +115,7 @@ func main() {
 		config := email.EmailConfig{
 			EmailHost: *emailHost,
 			EmailPort: *emailPort,
-			Digest: services.DigestConfig{
+			Squash: services.SquashConfig{
 				RateMax: *emailRateAmount,
 				RatePer: time.Second * time.Duration(*emailRatePer),
 			},

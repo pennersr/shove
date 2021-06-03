@@ -13,7 +13,7 @@ const serviceID = "email"
 type EmailConfig struct {
 	EmailHost string
 	EmailPort int
-	Digest    services.DigestConfig
+	Squash    services.SquashConfig
 	Log       *log.Logger
 }
 
@@ -26,7 +26,7 @@ func NewEmailService(config EmailConfig) (es *EmailService, err error) {
 	es = &EmailService{
 		config: config,
 	}
-	es.pump = services.NewPump(1, config.Digest, es)
+	es.pump = services.NewPump(1, config.Squash, es)
 	return
 }
 
@@ -46,7 +46,7 @@ func (es *EmailService) NewClient() (services.PumpClient, error) {
 	return nil, nil
 }
 
-func (es *EmailService) PushDigest(client services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
+func (es *EmailService) SquashAndPushMessage(client services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
 	emails := make([]email, len(smsgs))
 	for i, smsg := range smsgs {
 		emails[i] = smsg.(email)

@@ -26,7 +26,7 @@ func NewFCM(apiKey string, log *log.Logger) (fcm *FCM, err error) {
 		apiKey: apiKey,
 		log:    log,
 	}
-	fcm.pump = services.NewPump(4, services.DigestConfig{}, fcm)
+	fcm.pump = services.NewPump(4, services.SquashConfig{}, fcm)
 	return
 }
 
@@ -65,7 +65,7 @@ type fcmResponse struct {
 	} `json:"results"`
 }
 
-func (fcm *FCM) PushDigest(services.PumpClient, []services.ServiceMessage, services.FeedbackCollector) services.PushStatus {
+func (fcm *FCM) SquashAndPushMessage(services.PumpClient, []services.ServiceMessage, services.FeedbackCollector) services.PushStatus {
 	panic("not implemented")
 }
 

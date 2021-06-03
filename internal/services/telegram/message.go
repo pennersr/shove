@@ -24,7 +24,7 @@ type telegramPayload struct {
 	Photo   string `json:"photo,omitempty"`
 }
 
-func (msg telegramMessage) GetDigestTarget() string {
+func (msg telegramMessage) GetSquashKey() string {
 	// TODO: This should include method (`sendMessage`)
 	return msg.parsedPayload.ChatID
 }
@@ -53,7 +53,7 @@ func (tg *TelegramService) Validate(data []byte) error {
 	return err
 }
 
-func createDigest(msgs []telegramMessage) (dmsg telegramMessage, err error) {
+func squashMessages(msgs []telegramMessage) (dmsg telegramMessage, err error) {
 	if len(msgs) == 0 {
 		err = errors.New("need at least one message to digest")
 		return
