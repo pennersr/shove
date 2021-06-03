@@ -1,6 +1,6 @@
 # When push comes to shove...
 
-[![Go Report Card](https://goreportcard.com/badge/gitlab.com/pennersr/shove)](https://goreportcard.com/report/gitlab.com/pennersr/shove)
+[![Go Report Card](https://goreportcard.com/badge/gitlab.com/pennersr/shove)](https://goreportcard.com/report/gitlab.com/pennersr/shove) [![Written in Emacs](https://pennersr.github.io/img/emacs-badge.svg)](https://goreportcard.com/report/gitlab.com/pennersr/shove)
 
 ## Background
 
