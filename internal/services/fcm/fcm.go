@@ -7,7 +7,6 @@ import (
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
 	"log"
-	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -15,23 +14,24 @@ import (
 
 // FCM ...
 type FCM struct {
-	transport *http.Transport
-	wg        sync.WaitGroup
-	apiKey    string
-	log       *log.Logger
+	wg     sync.WaitGroup
+	apiKey string
+	log    *log.Logger
+	pump   *services.Pump
 }
 
 // NewFCM ...
 func NewFCM(apiKey string, log *log.Logger) (fcm *FCM, err error) {
 	fcm = &FCM{
 		apiKey: apiKey,
-		transport: &http.Transport{
-			MaxIdleConns:    5,
-			IdleConnTimeout: 30 * time.Second,
-		},
-		log: log,
+		log:    log,
 	}
+	fcm.pump = services.NewPump(4, services.DigestConfig{}, fcm)
 	return
+}
+
+func (fcm *FCM) Logger() *log.Logger {
+	return fcm.log
 }
 
 // ID ...
@@ -44,41 +44,15 @@ func (fcm *FCM) String() string {
 	return "FCM"
 }
 
-func (fcm *FCM) serveClient(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) {
-	defer func() {
-		fcm.wg.Done()
-	}()
-	failureCount := 0
-	for ctx.Err() == nil {
-		qm, err := q.Get(ctx)
-		if err != nil {
-			fcm.log.Println("[ERROR] Reading from queue:", err)
-			return
-		}
-		msg := qm.Message()
-		notif, err := fcm.convert(msg)
-		if err != nil {
-			fcm.log.Println("[ERROR] Bad message:", err)
-			fcm.remove(q, qm)
-			continue
-		}
-		done, retry := fcm.push(notif, msg, fc)
-		if done {
-			fcm.remove(q, qm)
-		} else {
-			if err = q.Requeue(qm); err != nil {
-				fcm.log.Println("[ERROR] Putting back in the queue:", err)
-			}
-		}
-		if retry {
-			fcm.backoff(ctx, failureCount)
-			failureCount++
-
-		} else {
-			failureCount = 0
-
-		}
+func (fcm *FCM) NewClient() (services.PumpClient, error) {
+	client := &http.Client{
+		Timeout: time.Duration(15 * time.Second),
+		Transport: &http.Transport{
+			MaxIdleConns:    5,
+			IdleConnTimeout: 30 * time.Second,
+		},
 	}
+	return client, nil
 }
 
 type fcmResponse struct {
@@ -91,25 +65,28 @@ type fcmResponse struct {
 	} `json:"results"`
 }
 
-func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector) (done, retry bool) {
+func (fcm *FCM) PushDigest(services.PumpClient, []services.ServiceMessage, services.FeedbackCollector) services.PushStatus {
+	panic("not implemented")
+}
+
+func (fcm *FCM) PushMessage(pclient services.PumpClient, smsg services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
+	msg := smsg.(fcmMessage)
 	startedAt := time.Now()
 	var success bool
 
-	req, err := http.NewRequest("POST", "https://fcm.googleapis.com/fcm/send", bytes.NewBuffer(data))
+	req, err := http.NewRequest("POST", "https://fcm.googleapis.com/fcm/send", bytes.NewBuffer(msg.rawData))
 	if err != nil {
 		fcm.log.Println("[ERROR] Creating request:", err)
-		return false, true
+		return services.PushStatusHardFail
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "key="+fcm.apiKey)
 
-	client := &http.Client{
-		Timeout:   time.Duration(15 * time.Second),
-		Transport: fcm.transport}
+	client := pclient.(*http.Client)
 	resp, err := client.Do(req)
 	if err != nil {
 		fcm.log.Println("[ERROR] Posting:", err)
-		return false, true
+		return services.PushStatusTempFail
 	}
 	duration := time.Now().Sub(startedAt)
 
@@ -120,18 +97,18 @@ func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 		fcm.log.Println("[ERROR] Rejected, status code:", resp.StatusCode)
-		return true, false
+		return services.PushStatusHardFail
 	}
 	if resp.StatusCode >= 500 && resp.StatusCode < 600 {
 		fcm.log.Println("[ERROR] Upstream error, status code:", resp.StatusCode)
-		return false, true
+		return services.PushStatusTempFail
 	}
 
 	var fr fcmResponse
 	err = json.NewDecoder(resp.Body).Decode(&fr)
 	if err != nil {
 		fcm.log.Println("[ERROR] Decoding response:", err)
-		return false, true
+		return services.PushStatusTempFail
 	}
 	regIDs := msg.RegistrationIDs
 	if len(regIDs) == 0 {
@@ -160,32 +137,10 @@ func (fcm *FCM) push(msg *fcmMessage, data []byte, fc services.FeedbackCollector
 		}
 	}
 	success = true
-	return true, false
-}
-
-func (fcm *FCM) backoff(ctx context.Context, failureCount int) {
-	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	fcm.log.Printf("Backing off for %s", sleep)
-	ctx, cancel := context.WithTimeout(ctx, sleep)
-	defer cancel()
-	<-ctx.Done()
-}
-
-func (fcm *FCM) remove(q queue.Queue, qm queue.QueuedMessage) {
-	if err := q.Remove(qm); err != nil {
-		fcm.log.Println("[ERROR] Removing from the queue:", err)
-	}
+	return services.PushStatusSuccess
 }
 
 // Serve ...
 func (fcm *FCM) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	for i := 0; i < 4; i++ {
-		go fcm.serveClient(ctx, q, fc)
-		fcm.wg.Add(1)
-	}
-	fcm.log.Println("Workers started")
-	fcm.wg.Wait()
-	fcm.log.Println("Workers stopped")
-
-	return
+	return fcm.pump.Serve(ctx, q, fc)
 }

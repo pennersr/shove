@@ -3,14 +3,20 @@ package fcm
 import (
 	"encoding/json"
 	"errors"
+	"gitlab.com/pennersr/shove/internal/services"
 )
 
 type fcmMessage struct {
 	To              string   `json:"to"`
 	RegistrationIDs []string `json:"registration_ids"`
+	rawData         []byte
 }
 
-func (fcm *FCM) convert(data []byte) (*fcmMessage, error) {
+func (fcmMessage) GetDigestTarget() string {
+	panic("not implemented")
+}
+
+func (fcm *FCM) ConvertMessage(data []byte) (smsg services.ServiceMessage, err error) {
 	var msg fcmMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, err
@@ -24,11 +30,12 @@ func (fcm *FCM) convert(data []byte) (*fcmMessage, error) {
 	if msg.To != "" && len(msg.RegistrationIDs) > 0 {
 		return nil, errors.New("both to/registration_ids specified")
 	}
-	return &msg, nil
+	msg.rawData = data
+	return msg, nil
 }
 
 // Validate ...
 func (fcm *FCM) Validate(data []byte) error {
-	_, err := fcm.convert(data)
+	_, err := fcm.ConvertMessage(data)
 	return err
 }
