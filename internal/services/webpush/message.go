@@ -3,8 +3,7 @@ package webpush
 import (
 	"encoding/json"
 	wpg "github.com/SherClockHolmes/webpush-go"
-	"net/http"
-	"time"
+	"gitlab.com/pennersr/shove/internal/services"
 )
 
 type webPushMessage struct {
@@ -21,7 +20,11 @@ type webPushMessage struct {
 	subscription wpg.Subscription
 }
 
-func (wp *WebPush) convert(data []byte) (*webPushMessage, error) {
+func (msg webPushMessage) GetDigestTarget() string {
+	panic("not implemented")
+}
+
+func (wp *WebPush) ConvertMessage(data []byte) (services.ServiceMessage, error) {
 	var msg webPushMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, err
@@ -43,15 +46,11 @@ func (wp *WebPush) convert(data []byte) (*webPushMessage, error) {
 	if msg.Headers.TTL > 0 {
 		msg.options.TTL = msg.Headers.TTL
 	}
-	msg.options.HTTPClient = &http.Client{
-		Timeout:   time.Duration(15 * time.Second),
-		Transport: wp.transport,
-	}
-	return &msg, nil
+	return msg, nil
 }
 
 // Validate ...
 func (wp *WebPush) Validate(data []byte) error {
-	_, err := wp.convert(data)
+	_, err := wp.ConvertMessage(data)
 	return err
 }

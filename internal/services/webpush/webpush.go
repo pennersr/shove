@@ -16,9 +16,9 @@ import (
 type WebPush struct {
 	vapidPublicKey  string
 	vapidPrivateKey string
-	transport       *http.Transport
 	wg              sync.WaitGroup
 	log             *log.Logger
+	pump            *services.Pump
 }
 
 // NewWebPush ...
@@ -26,13 +26,25 @@ func NewWebPush(vapidPub, vapidPvt string, log *log.Logger) (wp *WebPush, err er
 	wp = &WebPush{
 		vapidPrivateKey: vapidPvt,
 		vapidPublicKey:  vapidPub,
-		transport: &http.Transport{
+		log:             log,
+	}
+	wp.pump = services.NewPump(8, services.DigestConfig{}, wp)
+	return
+}
+
+func (wp *WebPush) Logger() *log.Logger {
+	return wp.log
+}
+
+func (wp *WebPush) NewClient() (services.PumpClient, error) {
+	client := &http.Client{
+		Timeout: time.Duration(15 * time.Second),
+		Transport: &http.Transport{
 			MaxIdleConns:    5,
 			IdleConnTimeout: 30 * time.Second,
 		},
-		log: log,
 	}
-	return
+	return client, nil
 }
 
 // ID ...
@@ -45,50 +57,20 @@ func (wp *WebPush) String() string {
 	return "WebPush"
 }
 
-func (wp *WebPush) serveClient(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) {
-	defer func() {
-		wp.wg.Done()
-	}()
-	failureCount := 0
-	for ctx.Err() == nil {
-		qm, err := q.Get(ctx)
-		if err != nil {
-			wp.log.Println("[ERROR] Reading from queue:", err)
-			return
-		}
-		msg := qm.Message()
-		notif, err := wp.convert(msg)
-		if err != nil {
-			wp.log.Println("[ERROR] Bad message:", err)
-			wp.remove(q, qm)
-			continue
-		}
-		success, retry := wp.push(notif, msg, fc)
-		if success || !retry {
-			wp.remove(q, qm)
-		} else {
-			if err = q.Requeue(qm); err != nil {
-				wp.log.Println("[ERROR] Putting back in the queue:", err)
-			}
-		}
-		if retry {
-			wp.backoff(ctx, failureCount)
-			failureCount++
-
-		} else {
-			failureCount = 0
-
-		}
-	}
+func (wp *WebPush) PushDigest(client services.PumpClient, smsgs []services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
+	panic("not implemented")
 }
 
-func (wp *WebPush) push(msg *webPushMessage, data []byte, fc services.FeedbackCollector) (success, retry bool) {
+func (wp *WebPush) PushMessage(pclient services.PumpClient, smsg services.ServiceMessage, fc services.FeedbackCollector) services.PushStatus {
+	success := false
+	msg := smsg.(webPushMessage)
+	msg.options.HTTPClient = pclient.(*http.Client)
 	startedAt := time.Now()
 	// Send Notification
 	resp, err := wpg.SendNotification(msg.Payload, &msg.subscription, &msg.options)
 	if err != nil {
 		wp.log.Println("[ERROR] Sending:", err)
-		return false, false
+		return services.PushStatusHardFail
 	}
 	defer resp.Body.Close()
 	duration := time.Now().Sub(startedAt)
@@ -99,18 +81,19 @@ func (wp *WebPush) push(msg *webPushMessage, data []byte, fc services.FeedbackCo
 	switch resp.StatusCode {
 	case 201:
 		//  201 Created. The request to send a push message was received and accepted.
-		return true, false
+		success = true
+		return services.PushStatusSuccess
 
 	case 429:
 		// 429 Too many requests. Meaning your application server has
 		// reached a rate limit with a push service. The push service
 		// should include a 'Retry-After' header to indicate how long
 		// before another request can be made.
-		return false, true
+		return services.PushStatusTempFail
 
 	case 400:
 		// 400 Invalid request. This generally means one of your headers is invalid or improperly formatted.
-		return false, false
+		return services.PushStatusHardFail
 
 	case 404:
 		// 404 Not Found. This is an indication that the subscription is
@@ -123,11 +106,11 @@ func (wp *WebPush) push(msg *webPushMessage, data []byte, fc services.FeedbackCo
 		// removed from application server. This can be reproduced by
 		// calling `unsubscribe()` on a `PushSubscription`.
 		fc.TokenInvalid(wp.ID(), msg.Token)
-		return false, false
+		return services.PushStatusHardFail
 
 	default:
 		// 413 Payload size too large. The minimum size payload a push service must support is 4096 bytes (or 4kb).
-		return false, false
+		return services.PushStatusHardFail
 	}
 }
 
@@ -147,13 +130,5 @@ func (wp *WebPush) remove(q queue.Queue, qm queue.QueuedMessage) {
 
 // Serve ...
 func (wp *WebPush) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	for i := 0; i < 8; i++ {
-		go wp.serveClient(ctx, q, fc)
-		wp.wg.Add(1)
-	}
-	wp.log.Println("Workers started")
-	wp.wg.Wait()
-	wp.log.Println("Workers stopped")
-
-	return
+	return wp.pump.Serve(ctx, q, fc)
 }

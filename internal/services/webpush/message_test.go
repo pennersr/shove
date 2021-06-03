@@ -20,7 +20,7 @@ func TestConvert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg, err := wp.convert([]byte(fmt.Sprintf(`
+	smsg, err := wp.ConvertMessage([]byte(fmt.Sprintf(`
 {
 	"subscription": %s,
 	"headers": {
@@ -33,6 +33,7 @@ func TestConvert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	msg := smsg.(webPushMessage)
 	if msg.options.TTL != 10 {
 		t.Fatal("TTL wrong")
 	}
@@ -46,7 +47,7 @@ func TestConvertWithToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg, err := wp.convert([]byte(fmt.Sprintf(`
+	smsg, err := wp.ConvertMessage([]byte(fmt.Sprintf(`
 {
 	"subscription": %s,
 	"token": "my-token",
@@ -60,6 +61,7 @@ func TestConvertWithToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	msg := smsg.(webPushMessage)
 	if msg.Token != "my-token" {
 		t.Fatal(msg.Token)
 	}
