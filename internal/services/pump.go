@@ -149,7 +149,7 @@ func (p *Pump) Serve(ctx context.Context, q queue.Queue, fc FeedbackCollector) (
 		}(clients[i])
 		p.wg.Add(1)
 	}
-	log.Println("Workers started")
+	log.Println("Workers started:", p.workers)
 	p.wg.Wait()
 	log.Println("Workers stopped")
 

@@ -1,9 +1,7 @@
 package services
 
 import (
-	"context"
 	"fmt"
-	"gitlab.com/pennersr/shove/internal/queue"
 	"time"
 )
 
@@ -16,8 +14,8 @@ type FeedbackCollector interface {
 
 // PushService ...
 type PushService interface {
+	PumpAdapter
 	fmt.Stringer
 	ID() string
-	Serve(ctx context.Context, q queue.Queue, fc FeedbackCollector) error
 	Validate([]byte) error
 }

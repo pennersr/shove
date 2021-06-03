@@ -1,28 +1,23 @@
 package apns
 
 import (
-	"context"
 	"crypto/tls"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
-	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
 	"log"
-	"sync"
 	"time"
 )
 
 // APNS ...
 type APNS struct {
 	production bool
-	wg         sync.WaitGroup
 	log        *log.Logger
-	pump       *services.Pump
 	cert       tls.Certificate
 }
 
 // NewAPNS ...
-func NewAPNS(pemFile string, production bool, log *log.Logger, workers int) (apns *APNS, err error) {
+func NewAPNS(pemFile string, production bool, log *log.Logger) (apns *APNS, err error) {
 	cert, err := certificate.FromPemFile(pemFile, "")
 	if err != nil {
 		return
@@ -32,7 +27,6 @@ func NewAPNS(pemFile string, production bool, log *log.Logger, workers int) (apn
 		production: production,
 		log:        log,
 	}
-	apns.pump = services.NewPump(workers, services.SquashConfig{}, apns)
 	return
 }
 
@@ -103,9 +97,4 @@ func (apns *APNS) PushMessage(pclient services.PumpClient, smsg services.Service
 	}
 	fc.CountPush(apns.ID(), sent, duration)
 	return
-}
-
-// Serve ...
-func (apns *APNS) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	return apns.pump.Serve(ctx, q, fc)
 }

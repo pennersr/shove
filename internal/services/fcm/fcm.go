@@ -2,22 +2,17 @@ package fcm
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 )
 
 // FCM ...
 type FCM struct {
-	wg     sync.WaitGroup
 	apiKey string
 	log    *log.Logger
-	pump   *services.Pump
 }
 
 // NewFCM ...
@@ -26,7 +21,6 @@ func NewFCM(apiKey string, log *log.Logger) (fcm *FCM, err error) {
 		apiKey: apiKey,
 		log:    log,
 	}
-	fcm.pump = services.NewPump(4, services.SquashConfig{}, fcm)
 	return
 }
 
@@ -138,9 +132,4 @@ func (fcm *FCM) PushMessage(pclient services.PumpClient, smsg services.ServiceMe
 	}
 	success = true
 	return services.PushStatusSuccess
-}
-
-// Serve ...
-func (fcm *FCM) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	return fcm.pump.Serve(ctx, q, fc)
 }

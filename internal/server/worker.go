@@ -4,6 +4,7 @@ import (
 	"context"
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
+	"log"
 )
 
 type worker struct {
@@ -32,8 +33,12 @@ func (w *worker) push(msg []byte) (err error) {
 	return
 }
 
-func (w *worker) serve(fc services.FeedbackCollector) {
-	w.service.Serve(w.ctx, w.queue, fc)
+func (w *worker) serve(workers int, squash services.SquashConfig, fc services.FeedbackCollector) {
+	pump := services.NewPump(workers, squash, w.service)
+	err := pump.Serve(w.ctx, w.queue, fc)
+	if err != nil {
+		log.Println("[ERROR] Serving:", err)
+	}
 	w.finished <- true
 }
 

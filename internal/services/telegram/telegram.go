@@ -2,36 +2,28 @@ package telegram
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
-	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
 )
 
 // TelegramService ...
 type TelegramService struct {
 	botToken string
-	wg       sync.WaitGroup
 	log      *log.Logger
-	workers  int
-	pump     *services.Pump
 }
 
 // NewTelegramService ...
-func NewTelegramService(botToken string, log *log.Logger, workers int, squash services.SquashConfig) (tg *TelegramService, err error) {
+func NewTelegramService(botToken string, log *log.Logger) (tg *TelegramService, err error) {
 	tg = &TelegramService{
 		botToken: botToken,
 		log:      log,
-		workers:  workers,
 	}
-	tg.pump = services.NewPump(workers, squash, tg)
 	return
 }
 
@@ -134,9 +126,4 @@ func (tg *TelegramService) pushMessage(client *http.Client, method string, chatI
 	}
 	tg.log.Println("Pushed, took", duration)
 	return services.PushStatusSuccess
-}
-
-// Serve ...
-func (tg *TelegramService) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	return tg.pump.Serve(ctx, q, fc)
 }

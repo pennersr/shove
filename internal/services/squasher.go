@@ -132,8 +132,6 @@ func (d *squasher) getNextBatch() (b batch, stopped bool) {
 		}
 		time.Sleep(zzz)
 	}
-	stopped = true
-	return
 }
 
 func (d *squasher) requestShutdown() {

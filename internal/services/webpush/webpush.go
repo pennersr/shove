@@ -8,7 +8,6 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -16,9 +15,7 @@ import (
 type WebPush struct {
 	vapidPublicKey  string
 	vapidPrivateKey string
-	wg              sync.WaitGroup
 	log             *log.Logger
-	pump            *services.Pump
 }
 
 // NewWebPush ...
@@ -28,7 +25,6 @@ func NewWebPush(vapidPub, vapidPvt string, log *log.Logger) (wp *WebPush, err er
 		vapidPublicKey:  vapidPub,
 		log:             log,
 	}
-	wp.pump = services.NewPump(8, services.SquashConfig{}, wp)
 	return
 }
 
@@ -126,9 +122,4 @@ func (wp *WebPush) remove(q queue.Queue, qm queue.QueuedMessage) {
 	if err := q.Remove(qm); err != nil {
 		wp.log.Println("[ERROR] Removing from the queue:", err)
 	}
-}
-
-// Serve ...
-func (wp *WebPush) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	return wp.pump.Serve(ctx, q, fc)
 }

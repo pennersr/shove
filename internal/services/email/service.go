@@ -1,10 +1,8 @@
 package email
 
 import (
-	"context"
 	"log"
 
-	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
 )
 
@@ -13,20 +11,17 @@ const serviceID = "email"
 type EmailConfig struct {
 	EmailHost string
 	EmailPort int
-	Squash    services.SquashConfig
 	Log       *log.Logger
 }
 
 type EmailService struct {
 	config EmailConfig
-	pump   *services.Pump
 }
 
 func NewEmailService(config EmailConfig) (es *EmailService, err error) {
 	es = &EmailService{
 		config: config,
 	}
-	es.pump = services.NewPump(1, config.Squash, es)
 	return
 }
 
@@ -74,8 +69,4 @@ func (es *EmailService) push(from string, to []string, body []byte, fc services.
 		return services.PushStatusHardFail // TODO: smtp down is not a hard failure
 	}
 	return services.PushStatusSuccess
-}
-
-func (es *EmailService) Serve(ctx context.Context, q queue.Queue, fc services.FeedbackCollector) (err error) {
-	return es.pump.Serve(ctx, q, fc)
 }

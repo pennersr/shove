@@ -41,6 +41,48 @@ Features:
 
 ### Running
 
+Usage:
+
+    $ shove -h
+    Usage of ./shove:
+      -api-addr string
+            API address to listen to (default ":8322")
+      -apns-certificate-path string
+            APNS certificate path
+      -apns-sandbox-certificate-path string
+            APNS sandbox certificate path
+      -apns-workers int
+            The number of workers pushing APNS messages (default 4)
+      -email-host string
+            Email host
+      -email-port int
+            Email port (default 25)
+      -email-rate-amount int
+            Email max. rate (amount)
+      -email-rate-per int
+            Email max. rate (per seconds)
+      -fcm-api-key string
+            FCM API key
+      -fcm-workers int
+            The number of workers pushing FCM messages (default 4)
+      -queue-redis string
+            Use Redis queue (Redis URL)
+      -telegram-bot-token string
+            Telegram bot token
+      -telegram-rate-amount int
+            Telegram max. rate (amount)
+      -telegram-rate-per int
+            Telegram max. rate (per seconds)
+      -telegram-workers int
+            The number of workers pushing Telegram messages (default 2)
+      -webpush-vapid-private-key string
+            VAPID public key
+      -webpush-vapid-public-key string
+            VAPID public key
+      -webpush-workers int
+            The number of workers pushing Web messages (default 8)
+
+
 Start the server:
 
     $ shove \
@@ -48,7 +90,7 @@ Start the server:
         -queue-redis redis://redis:6379 \
         -fcm-api-key $FCM_API_KEY \
         -apns-certificate-path /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-path /etc/shove/apns/sandbox/bundle.pem \
-        -webpush-vapid-public-key=abc123 -webpush-vapid-private-key=secret \
+        -webpush-vapid-public-key=$VAPID_PUBLIC_KEY -webpush-vapid-private-key=$VAPID_PRIVATE_KEY \
         -telegram-bot-token $TELEGRAM_BOT_TOKEN
 
 

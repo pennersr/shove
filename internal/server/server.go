@@ -69,7 +69,7 @@ func (s *Server) Shutdown(ctx context.Context) (err error) {
 }
 
 // AddService ...
-func (s *Server) AddService(pp services.PushService) (err error) {
+func (s *Server) AddService(pp services.PushService, workers int, squash services.SquashConfig) (err error) {
 	log.Printf("Initializing %s service", pp)
 	q, err := s.queueFactory.NewQueue(pp.ID())
 	if err != nil {
@@ -79,7 +79,7 @@ func (s *Server) AddService(pp services.PushService) (err error) {
 	if err != nil {
 		return
 	}
-	go w.serve(s)
+	go w.serve(workers, squash, s)
 	s.workers[pp.ID()] = w
 	return
 }
