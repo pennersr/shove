@@ -190,3 +190,58 @@ later time, one digest mail is being sent:
     2021/03/23 21:16:00 email: Rate to john@doe.org exceeded, email digested
     2021/03/23 21:16:12 email: Rate to john@doe.org exceeded, email digested
     2021/03/23 21:16:18 email: Sending digest email
+
+
+### Redis Queues
+
+Shove is being used to push a high volume of notifications in a production
+environment, consisting of various microservices interacting together. In such a
+scenario, it is important that the various services are not too tightly coupled
+to one another.  For that purpose, Shove offers the ability to post
+notifications directly to a Redis queue.
+
+Posting directly to the Redis queue, instead of using the HTTP service
+endpoints, has the advantage that you can take Shove offline without disturbing
+the operation of the clients pushing the notifications.
+
+Shove intentionally tries to make as little assumptions on the notification
+payloads being pushed, as they are mostly handed over as is to the upstream
+services. So, when using Shove this way, the the client is responsible for
+handing over a raw payload. Here's an example:
+
+
+    package main
+
+    import (
+    	"encoding/json"
+    	"gitlab.com/pennersr/shove/pkg/shove"
+    	"log"
+    	"os"
+    )
+
+    type FCMNotification struct {
+    	To       string            `json:"to"`
+    	Data     map[string]string `json:"data,omitempty"`
+    }
+
+    func main() {
+    	redisURL := os.Getenv("REDIS_URL")
+    	if redisURL == "" {
+    		redis_URL = "redis://localhost:6379"
+    	}
+    	client := shove.NewRedisClient(redisURL)
+
+    	notification := FCMNotification{
+    		To:   "token....",
+    		Data: map[string]string{},
+    	}
+
+    	raw, err := json.Marshal(notification)
+    	if err != nil {
+    		log.Fatal(err)
+    	}
+    	err = client.PushRaw("fcm", raw)
+    	if err != nil {
+    		log.Fatal(err)
+    	}
+    }
