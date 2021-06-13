@@ -206,8 +206,8 @@ the operation of the clients pushing the notifications.
 
 Shove intentionally tries to make as little assumptions on the notification
 payloads being pushed, as they are mostly handed over as is to the upstream
-services. So, when using Shove this way, the the client is responsible for
-handing over a raw payload. Here's an example:
+services. So, when using Shove this way, the client is responsible for handing
+over a raw payload. Here's an example:
 
 
     package main
