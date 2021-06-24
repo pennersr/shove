@@ -14,6 +14,30 @@ import (
 	jwemail "github.com/jordan-wright/email"
 )
 
+func encodeSMTPAddress(s string) (string, error) {
+	addr, err := mail.ParseAddress(s)
+	if err != nil {
+		return "", err
+	}
+	return addr.Address, nil
+}
+
+func encodeSMTPAddresses(from string, to []string) (encFrom string, encTo []string, err error) {
+	encFrom, err = encodeSMTPAddress(from)
+	if err != nil {
+		return
+	}
+	encTo = make([]string, 0, len(to))
+	for _, t := range to {
+		t, err = encodeSMTPAddress(t)
+		if err != nil {
+			return
+		}
+		encTo = append(encTo, t)
+	}
+	return
+}
+
 func encodeAddress(s string) (string, error) {
 	addr, err := mail.ParseAddress(s)
 	if err != nil {

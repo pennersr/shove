@@ -15,12 +15,14 @@ func (ec EmailConfig) send(from string, to []string, body []byte, fc services.Fe
 	var auth smtp.Auth
 
 	var err error
-	if !ec.TLS {
-		err = smtp.SendMail(addr, auth, from, to, body)
-	} else {
-		err = ec.sendMailTLS(addr, auth, from, to, body)
+	from, to, err = encodeSMTPAddresses(from, to)
+	if err == nil {
+		if !ec.TLS {
+			err = smtp.SendMail(addr, auth, from, to, body)
+		} else {
+			err = ec.sendMailTLS(addr, auth, from, to, body)
+		}
 	}
-
 	duration := time.Since(t)
 	fc.CountPush(serviceID, err == nil, duration)
 

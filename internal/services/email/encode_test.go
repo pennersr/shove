@@ -73,3 +73,30 @@ func TestEncodeEmail(t *testing.T) {
 	}
 	t.Log(string(out))
 }
+
+func TestEncodeSMTPAddresses(t *testing.T) {
+	from, to, err := encodeSMTPAddresses("John <john@doe.org>", []string{"jane@doe.org", "Nobody <noreply@mail.org>"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if from != "john@doe.org" {
+		t.Fatal(from)
+	}
+	if to[0] != "jane@doe.org" {
+		t.Fatal(to[0])
+	}
+	if to[1] != "noreply@mail.org" {
+		t.Fatal(to[0])
+	}
+}
+
+func TestEncodeSMTPAddressesErrors(t *testing.T) {
+	_, _, err := encodeSMTPAddresses("John <john@doe.org", []string{"jane@doe.org", "Nobody <noreply@mail.org>"})
+	if err == nil {
+		t.Fail()
+	}
+	_, _, err = encodeSMTPAddresses("John <john@doe.org>", []string{"<jane@doe.org", "Nobody <noreply@mail.org>"})
+	if err == nil {
+		t.Fail()
+	}
+}
