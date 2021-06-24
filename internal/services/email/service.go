@@ -9,9 +9,11 @@ import (
 const serviceID = "email"
 
 type EmailConfig struct {
-	EmailHost string
-	EmailPort int
-	Log       *log.Logger
+	EmailHost   string
+	EmailPort   int
+	Log         *log.Logger
+	TLS         bool
+	TLSInsecure bool
 }
 
 type EmailService struct {
