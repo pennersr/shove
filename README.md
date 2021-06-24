@@ -61,6 +61,10 @@ Usage:
             Email max. rate (amount)
       -email-rate-per int
             Email max. rate (per seconds)
+      -email-tls
+            Use TLS
+      -email-tls-insecure
+            Skip TLS verification
       -fcm-api-key string
             FCM API key
       -fcm-workers int
