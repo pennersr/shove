@@ -42,6 +42,9 @@ var telegramRatePer = flag.Int("telegram-rate-per", 0, "Telegram max. rate (per 
 
 var emailHost = flag.String("email-host", "", "Email host")
 var emailPort = flag.Int("email-port", 25, "Email port")
+var emailPlainAuth = flag.Bool("email-plain-auth", false, "Email plain auth(username and password)")
+var emailUsername = flag.String("email-username", "", "Email username")
+var emailPassword = flag.String("email-password", "", "Email password")
 var emailTLS = flag.Bool("email-tls", false, "Use TLS")
 var emailTLSInsecure = flag.Bool("email-tls-insecure", false, "Skip TLS verification")
 var emailRateAmount = flag.Int("email-rate-amount", 0, "Email max. rate (amount)")
@@ -123,11 +126,14 @@ func main() {
 
 	if *emailHost != "" {
 		config := email.EmailConfig{
-			EmailHost:   *emailHost,
-			EmailPort:   *emailPort,
-			TLS:         *emailTLS,
-			TLSInsecure: *emailTLSInsecure,
-			Log:         newServiceLog("email"),
+			EmailHost:     *emailHost,
+			EmailPort:     *emailPort,
+			TLS:           *emailTLS,
+			TLSInsecure:   *emailTLSInsecure,
+			Log:           newServiceLog("email"),
+			PlainAuth:     *emailPlainAuth,
+			EmailUsername: *emailUsername,
+			EmailPassword: *emailPassword,
 		}
 		email, err := email.NewEmailService(config)
 		if err != nil {

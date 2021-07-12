@@ -14,6 +14,11 @@ func (ec EmailConfig) send(from string, to []string, body []byte, fc services.Fe
 	addr := fmt.Sprintf("%s:%d", ec.EmailHost, ec.EmailPort)
 	var auth smtp.Auth
 
+	// Only use it with TLS because net/smtp throws an error when tls is not enabled when using plain auth
+	if ec.PlainAuth && ec.TLS {
+		auth = smtp.PlainAuth("", ec.EmailUsername, ec.EmailPassword, ec.EmailHost)
+	}
+
 	var err error
 	from, to, err = encodeSMTPAddresses(from, to)
 	if err == nil {
