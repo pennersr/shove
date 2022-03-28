@@ -20,6 +20,7 @@ Supported push services:
 - FCM
 - Telegram: supports squashing multiple messages into one in case the rate limit
   is exceeded
+- Webhook: issue arbitrary webhook posts
 - Web Push
 
 Features:
@@ -79,6 +80,8 @@ Usage:
             Telegram max. rate (per seconds)
       -telegram-workers int
             The number of workers pushing Telegram messages (default 2)
+      -webhook-workers int
+            The number of workers pushing Webhook messages
       -webpush-vapid-private-key string
             VAPID public key
       -webpush-vapid-public-key string
@@ -120,6 +123,17 @@ A successful push results in:
 Push an FCM notification:
 
     $ curl  -i  --data '{"to": "feE8R6apOdA:AA91PbGHMX5HUoB-tbcqBO_e75NbiOc2AiFbGL3rrYtc99Z5ejbGmCCvOhKW5liqfOzRGOXxto5l7y6b_0dCc-AQ2_bXOcDkcPZgsXGbZvmEjaZA72DfVkZ2pfRrcpcc_9IiiRT5NYC", "notification": {"title": "Hello"}}' http://localhost:8322/api/push/fcm
+
+
+### Webhook
+
+Push a Webhook call, containing arbitrary body content:
+
+    $ curl  -i  --data '{"url": "http://localhost:8000/api/webhook", "headers": {"foo": "bar"}, "body": "Hello world!"}' http://localhost:8322/api/push/webhook
+
+Or, post JSON:
+
+    $ curl  -i  --data '{"url": "http://localhost:8000/api/webhook", "headers": {"foo": "bar"}, "data": {"hello": "world!"}}' http://localhost:8322/api/push/webhook
 
 
 ### WebPush

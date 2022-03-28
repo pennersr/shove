@@ -12,6 +12,7 @@ import (
 	"gitlab.com/pennersr/shove/internal/services/email"
 	"gitlab.com/pennersr/shove/internal/services/fcm"
 	"gitlab.com/pennersr/shove/internal/services/telegram"
+	"gitlab.com/pennersr/shove/internal/services/webhook"
 	"gitlab.com/pennersr/shove/internal/services/webpush"
 	"log"
 	"os"
@@ -30,6 +31,8 @@ var fcmAPIKey = flag.String("fcm-api-key", "", "FCM API key")
 var fcmWorkers = flag.Int("fcm-workers", 4, "The number of workers pushing FCM messages")
 
 var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
+
+var webhookWorkers = flag.Int("webhook-workers", 0, "The number of workers pushing Webhook messages")
 
 var webPushVAPIDPublicKey = flag.String("webpush-vapid-public-key", "", "VAPID public key")
 var webPushVAPIDPrivateKey = flag.String("webpush-vapid-private-key", "", "VAPID public key")
@@ -98,6 +101,16 @@ func main() {
 		}
 		if err := s.AddService(fcm, *fcmWorkers, services.SquashConfig{}); err != nil {
 			log.Fatal("[ERROR] Adding FCM service:", err)
+		}
+	}
+
+	if *webhookWorkers > 0 {
+		wh, err := webhook.NewWebhook(newServiceLog("webhook"))
+		if err != nil {
+			log.Fatal("[ERROR] Setting up Webhook service:", err)
+		}
+		if err := s.AddService(wh, *webhookWorkers, services.SquashConfig{}); err != nil {
+			log.Fatal("[ERROR] Adding Webhook service:", err)
 		}
 	}
 
