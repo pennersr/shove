@@ -40,8 +40,10 @@ func (mq *memoryQueue) Queue(msg []byte) (err error) {
 }
 
 func (mq *memoryQueue) Shutdown() (err error) {
+	mq.lock.Lock()
 	mq.shuttingDown = true
 	mq.cond.Broadcast()
+	mq.lock.Unlock()
 	return
 }
 
@@ -62,18 +64,30 @@ func (mq *memoryQueue) Requeue(qm queue.QueuedMessage) (err error) {
 	return
 }
 
+func (mq *memoryQueue) getNextMessage() *memoryQueuedMessage {
+	for i := 0; i < len(mq.buf); i++ {
+		m := mq.buf[i]
+		if m != nil && !m.pending {
+			m.pending = true
+			return m
+		}
+	}
+	return nil
+}
+
 func (mq *memoryQueue) Get(ctx context.Context) (queue.QueuedMessage, error) {
 	mq.cond.L.Lock()
 	defer mq.cond.L.Unlock()
-	for ctx.Err() == nil && !mq.shuttingDown {
-		mq.cond.Wait()
-		for i := 0; i < len(mq.buf); i++ {
-			m := mq.buf[i]
-			if m != nil && !m.pending {
-				m.pending = true
-				return m, nil
-			}
+	for ctx.Err() == nil {
+		if mq.shuttingDown {
+			break
 		}
+		msg := mq.getNextMessage()
+		if msg == nil {
+			mq.cond.Wait()
+			continue
+		}
+		return msg, nil
 	}
 	return nil, errors.New("queue shut down")
 }
