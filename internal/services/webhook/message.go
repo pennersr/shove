@@ -34,6 +34,9 @@ func (wh *Webhook) ConvertMessage(data []byte) (smsg services.ServiceMessage, er
 	}
 	if len(msg.Data) > 0 {
 		msg.postData = []byte(msg.Data)
+		if msg.Headers == nil {
+			msg.Headers = make(map[string]string)
+		}
 		msg.Headers["content-type"] = "application/json"
 	} else if len(msg.Body) > 0 {
 		msg.postData = []byte(msg.Body)
