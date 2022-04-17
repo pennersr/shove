@@ -66,7 +66,7 @@ func (wh *Webhook) PushMessage(pclient services.PumpClient, smsg services.Servic
 	resp, err := client.Do(req)
 	if err != nil {
 		wh.log.Println("[ERROR] Posting:", err)
-		return services.PushStatusTempFail
+		return services.PushStatusHardFail
 	}
 	duration := time.Now().Sub(startedAt)
 

@@ -1,12 +1,10 @@
 package webpush
 
 import (
-	"context"
 	wpg "github.com/SherClockHolmes/webpush-go"
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
 	"log"
-	"math"
 	"net/http"
 	"time"
 )
@@ -108,14 +106,6 @@ func (wp *WebPush) PushMessage(pclient services.PumpClient, smsg services.Servic
 		// 413 Payload size too large. The minimum size payload a push service must support is 4096 bytes (or 4kb).
 		return services.PushStatusHardFail
 	}
-}
-
-func (wp *WebPush) backoff(ctx context.Context, failureCount int) {
-	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	wp.log.Printf("Backing off for %s", sleep)
-	ctx, cancel := context.WithTimeout(ctx, sleep)
-	defer cancel()
-	<-ctx.Done()
 }
 
 func (wp *WebPush) remove(q queue.Queue, qm queue.QueuedMessage) {

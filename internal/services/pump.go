@@ -115,7 +115,7 @@ func removeFromQueue(q queue.Queue, qm queue.QueuedMessage, log *log.Logger) {
 
 func (p *Pump) backoff(ctx context.Context, failureCount int) {
 	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	log.Printf("Backing off for %s", sleep)
+	p.adapter.Logger().Printf("Backing off for %s", sleep)
 	ctx, cancel := context.WithTimeout(ctx, sleep)
 	defer cancel()
 	<-ctx.Done()
