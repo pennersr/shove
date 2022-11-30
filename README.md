@@ -263,3 +263,10 @@ over a raw payload. Here's an example:
     		log.Fatal(err)
     	}
     }
+
+
+## Status
+
+Used in production, over at:
+
+- [Drakdoo: Indicator based signals & alerts](https://www.drakdoo.com): 365.251.428 alerts fired and counting.
