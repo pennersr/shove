@@ -29,8 +29,6 @@ github.com/sideshow/apns2 v0.16.0/go.mod h1:f7dArLPLbiZ3qPdzzrZXdCSlMp8FD0p6z7tH
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
-gitlab.com/pennersr/redq v0.0.0-20200415172333-67c56b7ca3f0 h1:4igenNAxvXfcnVn908klT2bxn1SyjqmIk4aUWatPJrk=
-gitlab.com/pennersr/redq v0.0.0-20200415172333-67c56b7ca3f0/go.mod h1:x1ssSlx/egU6Y0SEQ/KyMadP/DbjqF5xz9oAaZ7RSB4=
 gitlab.com/pennersr/redq v0.0.0-20210323185356-5c672ce9cd53 h1:jNc7CT4zSLdzbmDM3IDuKDVqvo4pn/O/Y3R3A+bjwaA=
 gitlab.com/pennersr/redq v0.0.0-20210323185356-5c672ce9cd53/go.mod h1:x1ssSlx/egU6Y0SEQ/KyMadP/DbjqF5xz9oAaZ7RSB4=
 golang.org/x/crypto v0.0.0-20190131182504-b8fe1690c613/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
