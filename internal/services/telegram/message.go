@@ -53,14 +53,31 @@ func (tg *TelegramService) Validate(data []byte) error {
 	return err
 }
 
+func concatText(builder *strings.Builder, text string) {
+	text = strings.TrimSpace(text)
+	if len(text) == 0 {
+		return
+	}
+	texts := builder.String()
+	if len(texts) == 0 || strings.HasSuffix(texts, "\n\n") {
+		// No newlines needed
+	} else if strings.HasSuffix(texts, "\n") {
+		builder.WriteString("\n")
+	} else {
+		builder.WriteString("\n\n")
+	}
+	builder.WriteString(text)
+}
+
 func squashMessages(msgs []telegramMessage) (dmsg telegramMessage, err error) {
 	if len(msgs) == 0 {
 		err = errors.New("need at least one message to digest")
 		return
 	}
 	dmsg = msgs[0]
-	var text strings.Builder
-	for i, msg := range msgs {
+	var texts strings.Builder
+	var captions strings.Builder
+	for _, msg := range msgs {
 		if msg.Method != dmsg.Method {
 			err = errors.New("cannot digest mix of methods")
 			return
@@ -69,14 +86,11 @@ func squashMessages(msgs []telegramMessage) (dmsg telegramMessage, err error) {
 			err = errors.New("different `chat_id` seen while digesting")
 			return
 		}
-		if i > 0 {
-			text.WriteString("\n\n")
-		}
-		if msg.parsedPayload.Text != "" {
-			text.WriteString(msg.parsedPayload.Text)
-		}
+		concatText(&texts, msg.parsedPayload.Text)
+		concatText(&captions, msg.parsedPayload.Caption)
 	}
-	dmsg.parsedPayload.Text = text.String()
+	dmsg.parsedPayload.Text = texts.String()
+	dmsg.parsedPayload.Caption = captions.String()
 	dmsg.Payload, err = json.Marshal(&dmsg.parsedPayload)
 	return
 }
