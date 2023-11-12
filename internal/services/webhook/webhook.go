@@ -2,10 +2,12 @@ package webhook
 
 import (
 	"bytes"
-	"gitlab.com/pennersr/shove/internal/services"
-	"golang.org/x/exp/slog"
+	"io/ioutil"
 	"net/http"
 	"time"
+
+	"gitlab.com/pennersr/shove/internal/services"
+	"golang.org/x/exp/slog"
 )
 
 type Webhook struct {
@@ -53,6 +55,7 @@ func (wh *Webhook) PushMessage(pclient services.PumpClient, smsg services.Servic
 	startedAt := time.Now()
 	var success bool
 
+	wh.log.Debug("POST", "url", msg.URL, "data", string(msg.postData))
 	req, err := http.NewRequest("POST", msg.URL, bytes.NewBuffer(msg.postData))
 	if err != nil {
 		wh.log.Error("Failed to create request", "error", err)
@@ -73,6 +76,13 @@ func (wh *Webhook) PushMessage(pclient services.PumpClient, smsg services.Servic
 	defer func() {
 		fc.CountPush(wh.ID(), success, duration)
 	}()
+
+	body, error := ioutil.ReadAll(resp.Body)
+	if error != nil {
+		wh.log.Error("Failed to read POST response", "error", error)
+	} else {
+		wh.log.Debug("POST response", "response", string(body))
+	}
 
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
