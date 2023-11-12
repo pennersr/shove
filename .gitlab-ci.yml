@@ -1,4 +1,4 @@
-image: golang:1.18-bullseye
+image: golang:1.20-bullseye
 
 variables:
   REPO_NAME: gitlab.com/pennersr/shove
