@@ -32,7 +32,7 @@ func (ec EmailConfig) send(from string, to []string, body []byte, fc services.Fe
 	fc.CountPush(serviceID, err == nil, duration)
 
 	if err != nil {
-		ec.Log.Printf("[ERROR] Send failed: %s", err)
+		ec.Log.Error("Send failed", "error", err)
 		return err
 	}
 	return nil

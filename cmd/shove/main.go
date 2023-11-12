@@ -14,7 +14,7 @@ import (
 	"gitlab.com/pennersr/shove/internal/services/telegram"
 	"gitlab.com/pennersr/shove/internal/services/webhook"
 	"gitlab.com/pennersr/shove/internal/services/webpush"
-	"log"
+	"golang.org/x/exp/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -53,12 +53,16 @@ var emailTLSInsecure = flag.Bool("email-tls-insecure", false, "Skip TLS verifica
 var emailRateAmount = flag.Int("email-rate-amount", 0, "Email max. rate (amount)")
 var emailRatePer = flag.Int("email-rate-per", 0, "Email max. rate (per seconds)")
 
-func newServiceLog(prefix string) *log.Logger {
-	return log.New(log.Writer(), prefix+": ", log.Flags())
+func newServiceLog(prefix string) *slog.Logger {
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	return logger.With(
+		slog.String("service", prefix),
+	)
 }
 
 func main() {
-	log.SetFlags(log.Flags() | log.Lmsgprefix)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	slog.SetDefault(logger)
 	flag.Parse()
 
 	stop := make(chan os.Signal, 1)
@@ -66,10 +70,10 @@ func main() {
 
 	var qf queue.QueueFactory
 	if *redisURL == "" {
-		log.Println("Using non-persistent in-memory queue")
+		slog.Info("Using non-persistent in-memory queue")
 		qf = memory.MemoryQueueFactory{}
 	} else {
-		log.Println("Using Redis queue at", *redisURL)
+		slog.Info("Using Redis queue at", "address", *redisURL)
 		qf = redis.NewQueueFactory(*redisURL)
 	}
 	s := server.NewServer(*apiAddr, qf)
@@ -77,63 +81,75 @@ func main() {
 	if *apnsCertificate != "" {
 		apns, err := apns.NewAPNS(*apnsCertificate, true, newServiceLog("apns"))
 		if err != nil {
-			log.Fatal("[ERROR] Setting up APNS service:", err)
+			slog.Error("Failed to setup APNS service", "error", err)
+			os.Exit(1)
 		}
 		if err := s.AddService(apns, *apnsWorkers, services.SquashConfig{}); err != nil {
-			log.Fatal("[ERROR] Adding APNS service:", err)
+			slog.Error("Failed to add APNS service", "error", err)
+			os.Exit(1)
 		}
 	}
 
 	if *apnsSandboxCertificate != "" {
 		apns, err := apns.NewAPNS(*apnsSandboxCertificate, false, newServiceLog("apns-sandbox"))
 		if err != nil {
-			log.Fatal("[ERROR] Setting up APNS sandbox service:", err)
+			slog.Error("Failed to setup APNS sandbox service", "error", err)
+			os.Exit(1)
 		}
 		if err := s.AddService(apns, *apnsWorkers, services.SquashConfig{}); err != nil {
-			log.Fatal("[ERROR] Adding APNS sandbox service:", err)
+			slog.Error("Failed to add APNS sandbox service", "error", err)
+			os.Exit(1)
 		}
 	}
 
 	if *fcmAPIKey != "" {
 		fcm, err := fcm.NewFCM(*fcmAPIKey, newServiceLog("fcm"))
 		if err != nil {
-			log.Fatal("[ERROR] Setting up FCM service:", err)
+			slog.Error("Failed to setup FCM service", "error", err)
+			os.Exit(1)
 		}
 		if err := s.AddService(fcm, *fcmWorkers, services.SquashConfig{}); err != nil {
-			log.Fatal("[ERROR] Adding FCM service:", err)
+			slog.Error("Failed to add FCM service", "error", err)
+			os.Exit(1)
 		}
 	}
 
 	if *webhookWorkers > 0 {
 		wh, err := webhook.NewWebhook(newServiceLog("webhook"))
 		if err != nil {
-			log.Fatal("[ERROR] Setting up Webhook service:", err)
+			slog.Error("Failed to setup Webhook service", "error", err)
+			os.Exit(1)
 		}
 		if err := s.AddService(wh, *webhookWorkers, services.SquashConfig{}); err != nil {
-			log.Fatal("[ERROR] Adding Webhook service:", err)
+			slog.Error("Failed to add Webhook service", "error", err)
+			os.Exit(1)
 		}
 	}
 
 	if *webPushVAPIDPrivateKey != "" {
 		web, err := webpush.NewWebPush(*webPushVAPIDPublicKey, *webPushVAPIDPrivateKey, newServiceLog("webpush"))
 		if err != nil {
-			log.Fatal("[ERROR] Setting up WebPush service:", err)
+			slog.Error("Failed to setup WebPush service", "error", err)
+			os.Exit(1)
 		}
 		if err := s.AddService(web, *webPushWorkers, services.SquashConfig{}); err != nil {
-			log.Fatal("[ERROR] Adding WebPush service:", err)
+			slog.Error("Failed to add WebPush service", "error", err)
+			os.Exit(1)
 		}
 	}
 
 	if *telegramBotToken != "" {
 		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLog("telegram"))
 		if err != nil {
-			log.Fatal("[ERROR] Setting up Telegram service:", err)
+			slog.Error("Failed to setup Telegram service", "error", err)
+			os.Exit(1)
 		}
 		if err := s.AddService(tg, *telegramWorkers, services.SquashConfig{
 			RateMax: *telegramRateAmount,
 			RatePer: time.Second * time.Duration(*telegramRatePer),
 		}); err != nil {
-			log.Fatal("[ERROR] Adding Telegram service:", err)
+			slog.Error("Failed to add Telegram service", "error", err)
+			os.Exit(1)
 		}
 	}
 
@@ -150,26 +166,29 @@ func main() {
 		}
 		email, err := email.NewEmailService(config)
 		if err != nil {
-			log.Fatal("[ERROR] Setting up email service:", err)
+			slog.Error("Failed to setup email service", "error", err)
+			os.Exit(1)
 		}
 		if err := s.AddService(email, 1, services.SquashConfig{
 			RateMax: *emailRateAmount,
 			RatePer: time.Second * time.Duration(*emailRatePer),
 		}); err != nil {
-			log.Fatal("[ERROR] Adding email service:", err)
+			slog.Error("Failed to add email service", "error", err)
+			os.Exit(1)
 		}
 	}
 
 	go func() {
-		log.Println("Serving on", *apiAddr)
+		slog.Info("Serving", "address", *apiAddr)
 		err := s.Serve()
 		if err != nil {
-			log.Fatal("[ERROR] Serving:", err)
+			slog.Error("Serve failed", "error", err)
+			os.Exit(1)
 		}
 	}()
 	<-stop
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.Shutdown(ctx)
-	log.Println("Exiting")
+	slog.Info("Exiting")
 }

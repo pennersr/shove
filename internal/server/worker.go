@@ -4,7 +4,7 @@ import (
 	"context"
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
-	"log"
+	"golang.org/x/exp/slog"
 )
 
 type worker struct {
@@ -37,7 +37,7 @@ func (w *worker) serve(workers int, squash services.SquashConfig, fc services.Fe
 	pump := services.NewPump(workers, squash, w.service)
 	err := pump.Serve(w.ctx, w.queue, fc)
 	if err != nil {
-		log.Println("[ERROR] Serving:", err)
+		slog.Error("Serve failed", "error", err)
 	}
 	w.finished <- true
 }

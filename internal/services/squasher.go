@@ -78,7 +78,7 @@ func (d *squasher) prepareToPush(q queue.Queue, qm queue.QueuedMessage, client P
 		d.recordPush(key)
 		return false
 	}
-	d.adapter.Logger().Printf("Rate to %s exceeded, squashed", key)
+	d.adapter.Logger().Info("Rate exceeded, squashed", "destination", key)
 
 	batch, ok := d.batches[key]
 	if ok {
@@ -145,7 +145,7 @@ func (d *squasher) shutdown() {
 	d.cond.L.Lock()
 	defer d.cond.L.Unlock()
 
-	d.adapter.Logger().Println("Shutting down squasher:", len(d.batches), "batches unsent")
+	d.adapter.Logger().Info("Shutting down squasher", "unsent_batch_count", len(d.batches))
 }
 
 func (d *squasher) serve(fc FeedbackCollector) {
@@ -161,7 +161,7 @@ func (d *squasher) serve(fc FeedbackCollector) {
 }
 
 func (d *squasher) sendBatch(b batch, fc FeedbackCollector) {
-	d.adapter.Logger().Println("Sending batch of", len(b.serviceMsgs), "messages")
+	d.adapter.Logger().Info("Sending batch", "batch_size", len(b.serviceMsgs))
 	d.cond.L.Lock()
 	d.recordPush(b.key)
 	d.cond.L.Unlock()
@@ -172,7 +172,7 @@ func (d *squasher) sendBatch(b batch, fc FeedbackCollector) {
 		// TODO: We should actually attempt to retry this with a backoff
 		fallthrough
 	case PushStatusHardFail:
-		d.adapter.Logger().Println("[ERROR] Failed to send batch")
+		d.adapter.Logger().Error("Failed to send batch")
 		fallthrough
 	case PushStatusSuccess:
 		for _, qm := range b.queuedMsgs {

@@ -4,7 +4,7 @@ import (
 	wpg "github.com/SherClockHolmes/webpush-go"
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/services"
-	"log"
+	"golang.org/x/exp/slog"
 	"net/http"
 	"time"
 )
@@ -13,11 +13,11 @@ import (
 type WebPush struct {
 	vapidPublicKey  string
 	vapidPrivateKey string
-	log             *log.Logger
+	log             *slog.Logger
 }
 
 // NewWebPush ...
-func NewWebPush(vapidPub, vapidPvt string, log *log.Logger) (wp *WebPush, err error) {
+func NewWebPush(vapidPub, vapidPvt string, log *slog.Logger) (wp *WebPush, err error) {
 	wp = &WebPush{
 		vapidPrivateKey: vapidPvt,
 		vapidPublicKey:  vapidPub,
@@ -26,7 +26,7 @@ func NewWebPush(vapidPub, vapidPvt string, log *log.Logger) (wp *WebPush, err er
 	return
 }
 
-func (wp *WebPush) Logger() *log.Logger {
+func (wp *WebPush) Logger() *slog.Logger {
 	return wp.log
 }
 
@@ -63,12 +63,12 @@ func (wp *WebPush) PushMessage(pclient services.PumpClient, smsg services.Servic
 	// Send Notification
 	resp, err := wpg.SendNotification(msg.Payload, &msg.subscription, &msg.options)
 	if err != nil {
-		wp.log.Println("[ERROR] Sending:", err)
+		wp.log.Error("Failed to send", "error", err)
 		return services.PushStatusHardFail
 	}
 	defer resp.Body.Close()
 	duration := time.Now().Sub(startedAt)
-	wp.log.Printf("Pushed (%d), took %s", resp.StatusCode, duration)
+	wp.log.Info("Pushed", "status", resp.StatusCode, "duration", duration)
 	defer func() {
 		fc.CountPush(wp.ID(), success, duration)
 	}()
@@ -110,6 +110,6 @@ func (wp *WebPush) PushMessage(pclient services.PumpClient, smsg services.Servic
 
 func (wp *WebPush) remove(q queue.Queue, qm queue.QueuedMessage) {
 	if err := q.Remove(qm); err != nil {
-		wp.log.Println("[ERROR] Removing from the queue:", err)
+		wp.log.Error("Failed to remove from the queue", "error", err)
 	}
 }

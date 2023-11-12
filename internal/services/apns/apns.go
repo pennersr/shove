@@ -5,19 +5,19 @@ import (
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
 	"gitlab.com/pennersr/shove/internal/services"
-	"log"
+	"golang.org/x/exp/slog"
 	"time"
 )
 
 // APNS ...
 type APNS struct {
 	production bool
-	log        *log.Logger
+	log        *slog.Logger
 	cert       tls.Certificate
 }
 
 // NewAPNS ...
-func NewAPNS(pemFile string, production bool, log *log.Logger) (apns *APNS, err error) {
+func NewAPNS(pemFile string, production bool, log *slog.Logger) (apns *APNS, err error) {
 	cert, err := certificate.FromPemFile(pemFile, "")
 	if err != nil {
 		return
@@ -30,7 +30,7 @@ func NewAPNS(pemFile string, production bool, log *log.Logger) (apns *APNS, err 
 	return
 }
 
-func (apns *APNS) Logger() *log.Logger {
+func (apns *APNS) Logger() *slog.Logger {
 	return apns.log
 }
 
@@ -74,14 +74,14 @@ func (apns *APNS) PushMessage(pclient services.PumpClient, smsg services.Service
 	duration := time.Now().Sub(t)
 	sent := false
 	if err != nil {
-		apns.log.Println("[ERROR] Pushing:", err)
+		apns.log.Error("Push message failed", "error", err)
 		status = services.PushStatusTempFail
 	} else {
 		reason := resp.Reason
 		if reason == "" {
 			reason = "OK"
 		}
-		apns.log.Printf("Pushed (%s), took %s", reason, duration)
+		apns.log.Info("Pushed", "reason", reason, "duration", duration)
 		sent = resp.Sent()
 		if resp.Reason == apns2.ReasonBadDeviceToken || resp.Reason == apns2.ReasonUnregistered {
 			fc.TokenInvalid(apns.ID(), notif.notification.DeviceToken)

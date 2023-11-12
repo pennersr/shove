@@ -3,23 +3,23 @@ package webhook
 import (
 	"bytes"
 	"gitlab.com/pennersr/shove/internal/services"
-	"log"
+	"golang.org/x/exp/slog"
 	"net/http"
 	"time"
 )
 
 type Webhook struct {
-	log *log.Logger
+	log *slog.Logger
 }
 
-func NewWebhook(log *log.Logger) (fcm *Webhook, err error) {
+func NewWebhook(log *slog.Logger) (fcm *Webhook, err error) {
 	fcm = &Webhook{
 		log: log,
 	}
 	return
 }
 
-func (fcm *Webhook) Logger() *log.Logger {
+func (fcm *Webhook) Logger() *slog.Logger {
 	return fcm.log
 }
 
@@ -55,7 +55,7 @@ func (wh *Webhook) PushMessage(pclient services.PumpClient, smsg services.Servic
 
 	req, err := http.NewRequest("POST", msg.URL, bytes.NewBuffer(msg.postData))
 	if err != nil {
-		wh.log.Println("[ERROR] Creating request:", err)
+		wh.log.Error("Failed to create request", "error", err)
 		return services.PushStatusHardFail
 	}
 	for k, v := range msg.Headers {
@@ -65,7 +65,7 @@ func (wh *Webhook) PushMessage(pclient services.PumpClient, smsg services.Servic
 	client := pclient.(*http.Client)
 	resp, err := client.Do(req)
 	if err != nil {
-		wh.log.Println("[ERROR] Posting:", err)
+		wh.log.Error("Failed to post", "error", err)
 		return services.PushStatusHardFail
 	}
 	duration := time.Now().Sub(startedAt)
@@ -76,11 +76,11 @@ func (wh *Webhook) PushMessage(pclient services.PumpClient, smsg services.Servic
 
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		wh.log.Println("[ERROR] Rejected, status code:", resp.StatusCode)
+		wh.log.Error("Rejected", "status", resp.StatusCode)
 		return services.PushStatusHardFail
 	}
 	if resp.StatusCode >= 500 && resp.StatusCode < 600 {
-		wh.log.Println("[ERROR] Upstream error, status code:", resp.StatusCode)
+		wh.log.Error("Upstream failure", "status", resp.StatusCode)
 		// A retry might help, but currently retries are not limitted to
 		// a certain number of attempts, meaning, we would keep trying
 		// indefinitely.

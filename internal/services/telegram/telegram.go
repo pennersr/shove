@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"golang.org/x/exp/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -15,11 +15,11 @@ import (
 // TelegramService ...
 type TelegramService struct {
 	botToken string
-	log      *log.Logger
+	log      *slog.Logger
 }
 
 // NewTelegramService ...
-func NewTelegramService(botToken string, log *log.Logger) (tg *TelegramService, err error) {
+func NewTelegramService(botToken string, log *slog.Logger) (tg *TelegramService, err error) {
 	tg = &TelegramService{
 		botToken: botToken,
 		log:      log,
@@ -27,7 +27,7 @@ func NewTelegramService(botToken string, log *log.Logger) (tg *TelegramService, 
 	return
 }
 
-func (tg *TelegramService) Logger() *log.Logger {
+func (tg *TelegramService) Logger() *slog.Logger {
 	return tg.log
 }
 
@@ -57,7 +57,7 @@ func (tg *TelegramService) SquashAndPushMessage(pclient services.PumpClient, sms
 	}
 	dmsg, err := squashMessages(msgs)
 	if err != nil {
-		tg.log.Println("[ERROR] Error squashing:", err)
+		tg.log.Error("Squashing failed", "error", err)
 		return services.PushStatusHardFail
 	}
 	return tg.pushMessage(client, dmsg.Method, dmsg.parsedPayload.ChatID, dmsg.Payload, fc)
@@ -76,13 +76,13 @@ func (tg *TelegramService) pushMessage(client *http.Client, method string, chatI
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/%s", tg.botToken, method)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	if err != nil {
-		tg.log.Println("[ERROR] Creating request:", err)
+		tg.log.Error("Failure creating request", "error", err)
 		return services.PushStatusHardFail
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		tg.log.Println("[ERROR] Posting:", err)
+		tg.log.Error("Posting failed", "error", err)
 		return services.PushStatusTempFail
 	}
 	duration := time.Now().Sub(startedAt)
@@ -94,7 +94,7 @@ func (tg *TelegramService) pushMessage(client *http.Client, method string, chatI
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 429 {
-		tg.log.Println("[ERROR] Throttled, too many requests: 429")
+		tg.log.Error("Throttled, too many requests", "status", 429)
 		return services.PushStatusTempFail
 	}
 
@@ -106,7 +106,7 @@ func (tg *TelegramService) pushMessage(client *http.Client, method string, chatI
 
 	err = json.NewDecoder(resp.Body).Decode(&respData)
 	if err != nil {
-		tg.log.Println("[ERROR] Decoding response:", err)
+		tg.log.Error("Unable to decode response", "error", err)
 		return services.PushStatusTempFail
 	}
 
@@ -117,13 +117,13 @@ func (tg *TelegramService) pushMessage(client *http.Client, method string, chatI
 		fc.TokenInvalid(tg.ID(), chatID)
 	}
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		tg.log.Printf("[ERROR] Rejected: %s (%d), HTTP status: %d", respData.Description, respData.ErrorCode, resp.StatusCode)
+		tg.log.Error("Rejected", "description", respData.Description, "error_code", respData.ErrorCode, "status", resp.StatusCode)
 		return services.PushStatusHardFail
 	}
 	if resp.StatusCode >= 500 && resp.StatusCode < 600 {
-		tg.log.Println("[ERROR] Upstream HTTP status:", resp.StatusCode)
+		tg.log.Error("Upstream failure", "status", resp.StatusCode)
 		return services.PushStatusTempFail
 	}
-	tg.log.Println("Pushed, took", duration)
+	tg.log.Info("Pushed", "duration", duration)
 	return services.PushStatusSuccess
 }

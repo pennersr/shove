@@ -2,7 +2,7 @@ package webpush
 
 import (
 	"fmt"
-	"log"
+	"golang.org/x/exp/slog"
 	"os"
 	"testing"
 )
@@ -16,7 +16,8 @@ const subscription = `{
 }`
 
 func TestConvert(t *testing.T) {
-	wp, err := NewWebPush("pub", "pvt", log.New(os.Stderr, "", log.LstdFlags))
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	wp, err := NewWebPush("pub", "pvt", logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +44,8 @@ func TestConvert(t *testing.T) {
 }
 
 func TestConvertWithToken(t *testing.T) {
-	wp, err := NewWebPush("pub", "pvt", log.New(os.Stderr, "", log.LstdFlags))
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	wp, err := NewWebPush("pub", "pvt", logger)
 	if err != nil {
 		t.Fatal(err)
 	}

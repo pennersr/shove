@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"gitlab.com/pennersr/shove/internal/services"
-	"log"
+	"golang.org/x/exp/slog"
 	"net/http"
 	"time"
 )
@@ -12,11 +12,11 @@ import (
 // FCM ...
 type FCM struct {
 	apiKey string
-	log    *log.Logger
+	log    *slog.Logger
 }
 
 // NewFCM ...
-func NewFCM(apiKey string, log *log.Logger) (fcm *FCM, err error) {
+func NewFCM(apiKey string, log *slog.Logger) (fcm *FCM, err error) {
 	fcm = &FCM{
 		apiKey: apiKey,
 		log:    log,
@@ -24,7 +24,7 @@ func NewFCM(apiKey string, log *log.Logger) (fcm *FCM, err error) {
 	return
 }
 
-func (fcm *FCM) Logger() *log.Logger {
+func (fcm *FCM) Logger() *slog.Logger {
 	return fcm.log
 }
 
@@ -70,7 +70,7 @@ func (fcm *FCM) PushMessage(pclient services.PumpClient, smsg services.ServiceMe
 
 	req, err := http.NewRequest("POST", "https://fcm.googleapis.com/fcm/send", bytes.NewBuffer(msg.rawData))
 	if err != nil {
-		fcm.log.Println("[ERROR] Creating request:", err)
+		fcm.log.Error("Creating request failed", "error", err)
 		return services.PushStatusHardFail
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -79,7 +79,7 @@ func (fcm *FCM) PushMessage(pclient services.PumpClient, smsg services.ServiceMe
 	client := pclient.(*http.Client)
 	resp, err := client.Do(req)
 	if err != nil {
-		fcm.log.Println("[ERROR] Posting:", err)
+		fcm.log.Error("Posting failed", "error", err)
 		return services.PushStatusTempFail
 	}
 	duration := time.Now().Sub(startedAt)
@@ -90,25 +90,25 @@ func (fcm *FCM) PushMessage(pclient services.PumpClient, smsg services.ServiceMe
 
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		fcm.log.Println("[ERROR] Rejected, status code:", resp.StatusCode)
+		fcm.log.Error("Rejected", "status", resp.StatusCode)
 		return services.PushStatusHardFail
 	}
 	if resp.StatusCode >= 500 && resp.StatusCode < 600 {
-		fcm.log.Println("[ERROR] Upstream error, status code:", resp.StatusCode)
+		fcm.log.Error("Upstream failure", "status", resp.StatusCode)
 		return services.PushStatusTempFail
 	}
 
 	var fr fcmResponse
 	err = json.NewDecoder(resp.Body).Decode(&fr)
 	if err != nil {
-		fcm.log.Println("[ERROR] Decoding response:", err)
+		fcm.log.Error("Unable to decode response", "error", err)
 		return services.PushStatusTempFail
 	}
 	regIDs := msg.RegistrationIDs
 	if len(regIDs) == 0 {
 		regIDs = append(regIDs, msg.To)
 	}
-	fcm.log.Println("Pushed, took", duration)
+	fcm.log.Info("Pushed", "duration", duration)
 	for i, fb := range fr.Results {
 		switch fb.Error {
 		case "":
@@ -127,7 +127,7 @@ func (fcm *FCM) PushMessage(pclient services.PumpClient, smsg services.ServiceMe
 			// another request.
 			fallthrough
 		default:
-			fcm.log.Println("[ERROR] Sending:", fb.Error)
+			fcm.log.Error("Sending failed", "error", fb.Error)
 		}
 	}
 	success = true

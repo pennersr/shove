@@ -1,7 +1,7 @@
 package email
 
 import (
-	"log"
+	"golang.org/x/exp/slog"
 
 	"gitlab.com/pennersr/shove/internal/services"
 )
@@ -11,7 +11,7 @@ const serviceID = "email"
 type EmailConfig struct {
 	EmailHost     string
 	EmailPort     int
-	Log           *log.Logger
+	Log           *slog.Logger
 	TLS           bool
 	TLSInsecure   bool
 	PlainAuth     bool
@@ -30,7 +30,7 @@ func NewEmailService(config EmailConfig) (es *EmailService, err error) {
 	return
 }
 
-func (es *EmailService) Logger() *log.Logger {
+func (es *EmailService) Logger() *slog.Logger {
 	return es.config.Log
 }
 
@@ -60,7 +60,7 @@ func (es *EmailService) SquashAndPushMessage(client services.PumpClient, smsgs [
 
 func (es *EmailService) PushMessage(pclient services.PumpClient, smsg services.ServiceMessage, fc services.FeedbackCollector) (status services.PushStatus) {
 	email := smsg.(email)
-	es.config.Log.Println("Sending email")
+	es.config.Log.Info("Sending email")
 	body, err := encodeEmail(email)
 	if err != nil {
 		return services.PushStatusHardFail
@@ -70,7 +70,7 @@ func (es *EmailService) PushMessage(pclient services.PumpClient, smsg services.S
 func (es *EmailService) push(from string, to []string, body []byte, fc services.FeedbackCollector) services.PushStatus {
 	err := es.config.send(from, to, body, fc)
 	if err != nil {
-		es.config.Log.Printf("[ERROR] Sending email failed: %s", err)
+		es.config.Log.Error("Failed to send email", "error", err)
 		return services.PushStatusHardFail // TODO: smtp down is not a hard failure
 	}
 	return services.PushStatusSuccess

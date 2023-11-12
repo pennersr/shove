@@ -2,7 +2,7 @@ package services
 
 import (
 	"context"
-	"log"
+	"golang.org/x/exp/slog"
 	"math"
 	"sync"
 	"time"
@@ -40,7 +40,7 @@ type PumpAdapter interface {
 	NewClient() (PumpClient, error)
 	PushMessage(client PumpClient, smsg ServiceMessage, fc FeedbackCollector) PushStatus
 	SquashAndPushMessage(client PumpClient, smsgs []ServiceMessage, fc FeedbackCollector) PushStatus
-	Logger() *log.Logger
+	Logger() *slog.Logger
 }
 
 // NewPump
@@ -75,13 +75,13 @@ func (p *Pump) serveClient(ctx context.Context, q queue.Queue, client PumpClient
 	for ctx.Err() == nil {
 		qm, err := q.Get(ctx)
 		if err != nil {
-			log.Println("[ERROR] Reading from queue:", err)
+			slog.Error("Unable to read from queue", "error", err)
 			return
 		}
 		msg := qm.Message()
 		smsg, err := p.adapter.ConvertMessage(msg)
 		if err != nil {
-			log.Println("[ERROR] Bad message:", err)
+			slog.Error("Bad message", "error", err)
 			removeFromQueue(q, qm, log)
 			continue
 		}
@@ -94,7 +94,7 @@ func (p *Pump) serveClient(ctx context.Context, q queue.Queue, client PumpClient
 			removeFromQueue(q, qm, log)
 		} else {
 			if err = q.Requeue(qm); err != nil {
-				log.Println("[ERROR] Putting back in the queue:", err)
+				slog.Error("Unable to requeue", "error", err)
 			}
 		}
 		if status == PushStatusTempFail {
@@ -107,15 +107,15 @@ func (p *Pump) serveClient(ctx context.Context, q queue.Queue, client PumpClient
 	}
 }
 
-func removeFromQueue(q queue.Queue, qm queue.QueuedMessage, log *log.Logger) {
+func removeFromQueue(q queue.Queue, qm queue.QueuedMessage, log *slog.Logger) {
 	if err := q.Remove(qm); err != nil {
-		log.Println("[ERROR] Removing from the queue:", err)
+		slog.Error("Unable to remove from the queue", "error", err)
 	}
 }
 
 func (p *Pump) backoff(ctx context.Context, failureCount int) {
 	sleep := time.Duration(float64(time.Second) * math.Min(30, math.Pow(2., float64(failureCount))))
-	p.adapter.Logger().Printf("Backing off for %s", sleep)
+	p.adapter.Logger().Info("Backing off", "duration", sleep)
 	ctx, cancel := context.WithTimeout(ctx, sleep)
 	defer cancel()
 	<-ctx.Done()
@@ -126,9 +126,9 @@ func (p *Pump) Serve(ctx context.Context, q queue.Queue, fc FeedbackCollector) (
 	if p.squasher != nil {
 		p.wg.Add(1)
 		go func() {
-			log.Println("Squasher started")
+			log.Info("Squasher started")
 			p.squasher.serve(fc)
-			log.Println("Squasher stopped")
+			log.Info("Squasher stopped")
 			p.wg.Add(-1)
 		}()
 	}
@@ -149,9 +149,9 @@ func (p *Pump) Serve(ctx context.Context, q queue.Queue, fc FeedbackCollector) (
 		}(clients[i])
 		p.wg.Add(1)
 	}
-	log.Println("Workers started:", p.workers)
+	slog.Info("Workers started", "worker_count", p.workers)
 	p.wg.Wait()
-	log.Println("Workers stopped")
+	slog.Info("Workers stopped")
 
 	return
 }
