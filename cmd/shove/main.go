@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"gitlab.com/pennersr/shove/internal/queue"
 	"gitlab.com/pennersr/shove/internal/queue/memory"
 	"gitlab.com/pennersr/shove/internal/queue/redis"
@@ -15,12 +20,9 @@ import (
 	"gitlab.com/pennersr/shove/internal/services/webhook"
 	"gitlab.com/pennersr/shove/internal/services/webpush"
 	"golang.org/x/exp/slog"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
+var debug = flag.Bool("debug", false, "Enable debug logging")
 var apiAddr = flag.String("api-addr", ":8322", "API address to listen to")
 
 var apnsCertificate = flag.String("apns-certificate-path", "", "APNS certificate path")
@@ -53,17 +55,29 @@ var emailTLSInsecure = flag.Bool("email-tls-insecure", false, "Skip TLS verifica
 var emailRateAmount = flag.Int("email-rate-amount", 0, "Email max. rate (amount)")
 var emailRatePer = flag.Int("email-rate-per", 0, "Email max. rate (per seconds)")
 
-func newServiceLog(prefix string) *slog.Logger {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+func newLogger() *slog.Logger {
+	var opts *slog.HandlerOptions
+	if *debug {
+		opts = &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, opts))
+	return logger
+}
+
+func newServiceLogger(service string) *slog.Logger {
+	logger := newLogger()
 	return logger.With(
-		slog.String("service", prefix),
+		slog.String("service", service),
 	)
 }
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	slog.SetDefault(logger)
 	flag.Parse()
+
+	logger := newLogger()
+	slog.SetDefault(logger)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -79,7 +93,7 @@ func main() {
 	s := server.NewServer(*apiAddr, qf)
 
 	if *apnsCertificate != "" {
-		apns, err := apns.NewAPNS(*apnsCertificate, true, newServiceLog("apns"))
+		apns, err := apns.NewAPNS(*apnsCertificate, true, newServiceLogger("apns"))
 		if err != nil {
 			slog.Error("Failed to setup APNS service", "error", err)
 			os.Exit(1)
@@ -91,7 +105,7 @@ func main() {
 	}
 
 	if *apnsSandboxCertificate != "" {
-		apns, err := apns.NewAPNS(*apnsSandboxCertificate, false, newServiceLog("apns-sandbox"))
+		apns, err := apns.NewAPNS(*apnsSandboxCertificate, false, newServiceLogger("apns-sandbox"))
 		if err != nil {
 			slog.Error("Failed to setup APNS sandbox service", "error", err)
 			os.Exit(1)
@@ -103,7 +117,7 @@ func main() {
 	}
 
 	if *fcmAPIKey != "" {
-		fcm, err := fcm.NewFCM(*fcmAPIKey, newServiceLog("fcm"))
+		fcm, err := fcm.NewFCM(*fcmAPIKey, newServiceLogger("fcm"))
 		if err != nil {
 			slog.Error("Failed to setup FCM service", "error", err)
 			os.Exit(1)
@@ -115,7 +129,7 @@ func main() {
 	}
 
 	if *webhookWorkers > 0 {
-		wh, err := webhook.NewWebhook(newServiceLog("webhook"))
+		wh, err := webhook.NewWebhook(newServiceLogger("webhook"))
 		if err != nil {
 			slog.Error("Failed to setup Webhook service", "error", err)
 			os.Exit(1)
@@ -127,7 +141,7 @@ func main() {
 	}
 
 	if *webPushVAPIDPrivateKey != "" {
-		web, err := webpush.NewWebPush(*webPushVAPIDPublicKey, *webPushVAPIDPrivateKey, newServiceLog("webpush"))
+		web, err := webpush.NewWebPush(*webPushVAPIDPublicKey, *webPushVAPIDPrivateKey, newServiceLogger("webpush"))
 		if err != nil {
 			slog.Error("Failed to setup WebPush service", "error", err)
 			os.Exit(1)
@@ -139,7 +153,7 @@ func main() {
 	}
 
 	if *telegramBotToken != "" {
-		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLog("telegram"))
+		tg, err := telegram.NewTelegramService(*telegramBotToken, newServiceLogger("telegram"))
 		if err != nil {
 			slog.Error("Failed to setup Telegram service", "error", err)
 			os.Exit(1)
@@ -159,7 +173,7 @@ func main() {
 			EmailPort:     *emailPort,
 			TLS:           *emailTLS,
 			TLSInsecure:   *emailTLSInsecure,
-			Log:           newServiceLog("email"),
+			Log:           newServiceLogger("email"),
 			PlainAuth:     *emailPlainAuth,
 			EmailUsername: *emailUsername,
 			EmailPassword: *emailPassword,
