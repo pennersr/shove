@@ -3,13 +3,12 @@ package fcm
 import (
 	"encoding/json"
 	"errors"
+	"firebase.google.com/go/messaging"
 	"gitlab.com/pennersr/shove/internal/services"
 )
 
 type fcmMessage struct {
-	To              string   `json:"to"`
-	RegistrationIDs []string `json:"registration_ids"`
-	rawData         []byte
+	Message *messaging.Message `json:"message"`
 }
 
 func (fcmMessage) GetSquashKey() string {
@@ -21,16 +20,12 @@ func (fcm *FCM) ConvertMessage(data []byte) (smsg services.ServiceMessage, err e
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, err
 	}
-	if len(msg.RegistrationIDs) >= 1000 {
-		return nil, errors.New("too many tokens")
+	if msg.Message == nil {
+		return nil, errors.New("message key missing")
 	}
-	if msg.To == "" && len(msg.RegistrationIDs) == 0 {
+	if msg.Message.Token == "" {
 		return nil, errors.New("no token specified")
 	}
-	if msg.To != "" && len(msg.RegistrationIDs) > 0 {
-		return nil, errors.New("both to/registration_ids specified")
-	}
-	msg.rawData = data
 	return msg, nil
 }
 

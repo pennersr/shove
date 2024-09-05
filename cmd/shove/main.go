@@ -29,7 +29,7 @@ var apnsCertificate = flag.String("apns-certificate-path", "", "APNS certificate
 var apnsSandboxCertificate = flag.String("apns-sandbox-certificate-path", "", "APNS sandbox certificate path")
 var apnsWorkers = flag.Int("apns-workers", 4, "The number of workers pushing APNS messages")
 
-var fcmAPIKey = flag.String("fcm-api-key", "", "FCM API key")
+var fcmCredentialsFile = flag.String("fcm-credentials-file", "", "FCM credentials file")
 var fcmWorkers = flag.Int("fcm-workers", 4, "The number of workers pushing FCM messages")
 
 var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
@@ -116,8 +116,8 @@ func main() {
 		}
 	}
 
-	if *fcmAPIKey != "" {
-		fcm, err := fcm.NewFCM(*fcmAPIKey, newServiceLogger("fcm"))
+	if *fcmCredentialsFile != "" {
+		fcm, err := fcm.NewFCM(*fcmCredentialsFile, newServiceLogger("fcm"))
 		if err != nil {
 			slog.Error("Failed to setup FCM service", "error", err)
 			os.Exit(1)

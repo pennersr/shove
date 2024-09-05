@@ -66,8 +66,8 @@ Usage:
             Use TLS
       -email-tls-insecure
             Skip TLS verification
-      -fcm-api-key string
-            FCM API key
+      -fcm-credentials-file string
+            Path to FCM service account JSON file
       -fcm-workers int
             The number of workers pushing FCM messages (default 4)
       -queue-redis string
@@ -95,7 +95,7 @@ Start the server:
     $ shove \
         -api-addr localhost:8322 \
         -queue-redis redis://redis:6379 \
-        -fcm-api-key $FCM_API_KEY \
+        -fcm-credentials-file /etc/shove/fcm/credentials.json \
         -apns-certificate-path /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-path /etc/shove/apns/sandbox/bundle.pem \
         -webpush-vapid-public-key=$VAPID_PUBLIC_KEY -webpush-vapid-private-key=$VAPID_PRIVATE_KEY \
         -telegram-bot-token $TELEGRAM_BOT_TOKEN
@@ -122,8 +122,7 @@ A successful push results in:
 
 Push an FCM notification:
 
-    $ curl  -i  --data '{"to": "feE8R6apOdA:AA91PbGHMX5HUoB-tbcqBO_e75NbiOc2AiFbGL3rrYtc99Z5ejbGmCCvOhKW5liqfOzRGOXxto5l7y6b_0dCc-AQ2_bXOcDkcPZgsXGbZvmEjaZA72DfVkZ2pfRrcpcc_9IiiRT5NYC", "notification": {"title": "Hello"}}' http://localhost:8322/api/push/fcm
-
+    $ curl  -i  --data '{"message": {"notification": {"body": "Hello world!", "title": "Test"}, "token": "c7VmdNNHQaGTLkmi....15CmMs"}}' http://localhost:8322/api/push/fcm
 
 ### Webhook
 
