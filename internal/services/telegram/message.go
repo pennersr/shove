@@ -69,6 +69,17 @@ func concatText(builder *strings.Builder, text string) {
 	builder.WriteString(text)
 }
 
+func trimString(input string, maxLength int) string {
+	if len(input) <= maxLength {
+		return input
+	}
+	trimLength := maxLength - 3
+	if trimLength < 0 {
+		trimLength = 0
+	}
+	return input[:trimLength] + "..."
+}
+
 func squashMessages(msgs []telegramMessage) (dmsg telegramMessage, err error) {
 	if len(msgs) == 0 {
 		err = errors.New("need at least one message to digest")
@@ -89,8 +100,8 @@ func squashMessages(msgs []telegramMessage) (dmsg telegramMessage, err error) {
 		concatText(&texts, msg.parsedPayload.Text)
 		concatText(&captions, msg.parsedPayload.Caption)
 	}
-	dmsg.parsedPayload.Text = texts.String()
-	dmsg.parsedPayload.Caption = captions.String()
+	dmsg.parsedPayload.Text = trimString(texts.String(), 4095)
+	dmsg.parsedPayload.Caption = trimString(captions.String(), 1023)
 	dmsg.Payload, err = json.Marshal(&dmsg.parsedPayload)
 	return
 }
