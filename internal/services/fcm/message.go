@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"firebase.google.com/go/messaging"
-	"gitlab.com/pennersr/shove/internal/services"
+	"codeberg.org/pennersr/shove/internal/services"
 )
 
 type fcmMessage struct {

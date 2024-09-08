@@ -3,8 +3,8 @@ package server
 import (
 	"context"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gitlab.com/pennersr/shove/internal/queue"
-	"gitlab.com/pennersr/shove/internal/services"
+	"codeberg.org/pennersr/shove/internal/queue"
+	"codeberg.org/pennersr/shove/internal/services"
 	"golang.org/x/exp/slog"
 	"net/http"
 	"sync"

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"gitlab.com/pennersr/shove/internal/services"
+	"codeberg.org/pennersr/shove/internal/services"
 	"golang.org/x/exp/slog"
 )
 

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"gitlab.com/pennersr/redq"
-	"gitlab.com/pennersr/shove/internal/queue"
+	"codeberg.org/pennersr/redq"
+	"codeberg.org/pennersr/shove/internal/queue"
 )
 
 type redisQueueFactory struct {

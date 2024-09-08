@@ -2,8 +2,8 @@ package server
 
 import (
 	"context"
-	"gitlab.com/pennersr/shove/internal/queue"
-	"gitlab.com/pennersr/shove/internal/services"
+	"codeberg.org/pennersr/shove/internal/queue"
+	"codeberg.org/pennersr/shove/internal/services"
 	"golang.org/x/exp/slog"
 )
 

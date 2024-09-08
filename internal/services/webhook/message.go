@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/url"
 
-	"gitlab.com/pennersr/shove/internal/services"
+	"codeberg.org/pennersr/shove/internal/services"
 )
 
 type webhookMessage struct {

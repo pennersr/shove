@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
-	"gitlab.com/pennersr/shove/internal/services"
+	"codeberg.org/pennersr/shove/internal/services"
 	"golang.org/x/exp/slog"
 	"time"
 )

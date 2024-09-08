@@ -3,7 +3,7 @@ package memory
 import (
 	"context"
 	"errors"
-	"gitlab.com/pennersr/shove/internal/queue"
+	"codeberg.org/pennersr/shove/internal/queue"
 	"sync"
 )
 

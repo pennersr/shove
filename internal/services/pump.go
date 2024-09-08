@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/pennersr/shove/internal/queue"
+	"codeberg.org/pennersr/shove/internal/queue"
 )
 
 type Pump struct {

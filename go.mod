@@ -1,15 +1,17 @@
-module gitlab.com/pennersr/shove
+module codeberg.org/pennersr/shove
 
-go 1.19
+go 1.21
+
+toolchain go1.22.6
 
 require (
+	codeberg.org/pennersr/redq v0.0.0-20240908181154-b13bb619b69d
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/SherClockHolmes/webpush-go v1.2.0
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/prometheus/client_golang v1.14.0
 	github.com/sideshow/apns2 v0.23.0
-	gitlab.com/pennersr/redq v0.0.0-20210323185356-5c672ce9cd53
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	google.golang.org/api v0.189.0
 )

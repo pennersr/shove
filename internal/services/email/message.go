@@ -3,7 +3,7 @@ package email
 import (
 	"encoding/json"
 	"errors"
-	"gitlab.com/pennersr/shove/internal/services"
+	"codeberg.org/pennersr/shove/internal/services"
 )
 
 type attachment struct {

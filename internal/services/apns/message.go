@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/sideshow/apns2"
-	"gitlab.com/pennersr/shove/internal/services"
+	"codeberg.org/pennersr/shove/internal/services"
 	"time"
 )
 

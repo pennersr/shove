@@ -3,7 +3,7 @@ package email
 import (
 	"golang.org/x/exp/slog"
 
-	"gitlab.com/pennersr/shove/internal/services"
+	"codeberg.org/pennersr/shove/internal/services"
 )
 
 const serviceID = "email"
