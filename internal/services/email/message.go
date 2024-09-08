@@ -1,9 +1,9 @@
 package email
 
 import (
+	"codeberg.org/pennersr/shove/internal/services"
 	"encoding/json"
 	"errors"
-	"codeberg.org/pennersr/shove/internal/services"
 )
 
 type attachment struct {

@@ -1,10 +1,10 @@
 package apns
 
 import (
+	"codeberg.org/pennersr/shove/internal/services"
 	"crypto/tls"
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/certificate"
-	"codeberg.org/pennersr/shove/internal/services"
 	"golang.org/x/exp/slog"
 	"time"
 )

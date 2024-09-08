@@ -1,9 +1,9 @@
 package webpush
 
 import (
-	wpg "github.com/SherClockHolmes/webpush-go"
 	"codeberg.org/pennersr/shove/internal/queue"
 	"codeberg.org/pennersr/shove/internal/services"
+	wpg "github.com/SherClockHolmes/webpush-go"
 	"golang.org/x/exp/slog"
 	"net/http"
 	"time"

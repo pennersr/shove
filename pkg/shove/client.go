@@ -1,8 +1,8 @@
 package shove
 
 import (
-	"github.com/gomodule/redigo/redis"
 	shvredis "codeberg.org/pennersr/shove/internal/queue/redis"
+	"github.com/gomodule/redigo/redis"
 	"time"
 )
 

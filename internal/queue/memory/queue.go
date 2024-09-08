@@ -1,9 +1,9 @@
 package memory
 
 import (
+	"codeberg.org/pennersr/shove/internal/queue"
 	"context"
 	"errors"
-	"codeberg.org/pennersr/shove/internal/queue"
 	"sync"
 )
 

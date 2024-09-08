@@ -1,10 +1,10 @@
 package server
 
 import (
-	"context"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"codeberg.org/pennersr/shove/internal/queue"
 	"codeberg.org/pennersr/shove/internal/services"
+	"context"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/exp/slog"
 	"net/http"
 	"sync"

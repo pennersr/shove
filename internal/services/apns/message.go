@@ -1,10 +1,10 @@
 package apns
 
 import (
+	"codeberg.org/pennersr/shove/internal/services"
 	"encoding/json"
 	"errors"
 	"github.com/sideshow/apns2"
-	"codeberg.org/pennersr/shove/internal/services"
 	"time"
 )
 

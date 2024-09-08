@@ -1,10 +1,10 @@
 package fcm
 
 import (
+	"codeberg.org/pennersr/shove/internal/services"
 	"encoding/json"
 	"errors"
 	"firebase.google.com/go/messaging"
-	"codeberg.org/pennersr/shove/internal/services"
 )
 
 type fcmMessage struct {

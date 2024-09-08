@@ -1,10 +1,10 @@
 package fcm
 
 import (
+	"codeberg.org/pennersr/shove/internal/services"
 	"context"
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
-	"codeberg.org/pennersr/shove/internal/services"
 	"golang.org/x/exp/slog"
 	"google.golang.org/api/option"
 	"strings"
