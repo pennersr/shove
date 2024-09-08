@@ -1,6 +1,6 @@
 # When push comes to shove...
 
-[![Go Report Card](https://goreportcard.com/badge/codeberg.org/pennersr/shove)](https://goreportcard.com/report/codeberg.org/pennersr/shove) [![Written in Emacs](https://pennersr.github.io/img/emacs-badge.svg)](https://www.gnu.org/software/emacs/)
+[![Go Report Card](https://goreportcard.com/badge/codeberg.org/pennersr/shove)](https://goreportcard.com/report/codeberg.org/pennersr/shove) [![Written in Emacs](https://pennersr.github.io/img/emacs-badge.svg)](https://www.gnu.org/software/emacs/) [![Pipeline Status](https://ci.codeberg.org/api/badges/13727/status.svg)](https://ci.codeberg.org/repos/13727)
 
 ## Background
 
