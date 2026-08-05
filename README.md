@@ -115,9 +115,11 @@ Start the server:
 
 ### APNS
 
-Two authentication methods are supported. Token-based authentication is
-recommended: a single `.p8` auth key works for both the production and sandbox
-environments and, unlike certificates, does not expire (no yearly renewal).
+Two authentication methods are supported: token-based (a `.p8` auth key) and
+certificate-based (a `.pem` certificate). Certificate and token authentication
+are mutually exclusive per environment.
+
+#### Token-based authentication
 
 To obtain a token auth key: in the [Apple Developer](https://developer.apple.com/account/resources/authkeys/list)
 portal go to *Certificates, Identifiers & Profiles → Keys*, create a key with
@@ -138,9 +140,12 @@ the same file and Key ID are used for each:
 
 If you created environment-scoped keys, point each flag at its own `.p8` / Key ID.
 
-Alternatively, certificate-based authentication remains available via
-`-apns-certificate-file` / `-apns-sandbox-certificate-file`. Certificate and token
-authentication are mutually exclusive per environment.
+#### Certificate-based authentication
+
+Certificate-based authentication uses a `.pem` certificate per environment, via
+`-apns-certificate-file` / `-apns-sandbox-certificate-file`.
+
+#### Pushing
 
 Push an APNS notification:
 
