@@ -58,10 +58,10 @@ Usage:
             APNS sandbox Key ID (from the Apple Developer account)
       -apns-team-id string
             APNS Team ID (from the Apple Developer account)
-      -apns-certificate-path string
-            APNS certificate path
-      -apns-sandbox-certificate-path string
-            APNS sandbox certificate path
+      -apns-certificate-file string
+            APNS certificate file
+      -apns-sandbox-certificate-file string
+            APNS sandbox certificate file
       -apns-workers int
             The number of workers pushing APNS messages (default 4)
       -email-host string
@@ -108,7 +108,7 @@ Start the server:
         -api-addr localhost:8322 \
         -queue-redis redis://redis:6379 \
         -fcm-credentials-file /etc/shove/fcm/credentials.json \
-        -apns-certificate-path /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-path /etc/shove/apns/sandbox/bundle.pem \
+        -apns-certificate-file /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-file /etc/shove/apns/sandbox/bundle.pem \
         -webpush-vapid-keys-file=/etc/shove/webpush/vapid-keys.json \
         -telegram-bot-token $TELEGRAM_BOT_TOKEN
 
@@ -139,7 +139,7 @@ the same file and Key ID are used for each:
 If you created environment-scoped keys, point each flag at its own `.p8` / Key ID.
 
 Alternatively, certificate-based authentication remains available via
-`-apns-certificate-path` / `-apns-sandbox-certificate-path`. Certificate and token
+`-apns-certificate-file` / `-apns-sandbox-certificate-file`. Certificate and token
 authentication are mutually exclusive per environment.
 
 Push an APNS notification:

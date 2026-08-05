@@ -23,11 +23,26 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+// deprecatedFlags maps a deprecated flag name to its canonical replacement.
+var deprecatedFlags = map[string]string{}
+
+// stringFlag registers a string flag under its canonical name plus any
+// deprecated aliases, all writing to the same variable.
+func stringFlag(value, usage, name string, deprecated ...string) *string {
+	p := new(string)
+	flag.StringVar(p, name, value, usage)
+	for _, alias := range deprecated {
+		flag.StringVar(p, alias, value, usage+" (deprecated, use -"+name+")")
+		deprecatedFlags[alias] = name
+	}
+	return p
+}
+
 var debug = flag.Bool("debug", false, "Enable debug logging")
 var apiAddr = flag.String("api-addr", ":8322", "API address to listen to")
 
-var apnsCertificate = flag.String("apns-certificate-path", "", "APNS certificate path")
-var apnsSandboxCertificate = flag.String("apns-sandbox-certificate-path", "", "APNS sandbox certificate path")
+var apnsCertificate = stringFlag("", "APNS certificate file", "apns-certificate-file", "apns-certificate-path")
+var apnsSandboxCertificate = stringFlag("", "APNS sandbox certificate file", "apns-sandbox-certificate-file", "apns-sandbox-certificate-path")
 var apnsKeyFile = flag.String("apns-key-file", "", "APNS token authentication key file (.p8)")
 var apnsKeyID = flag.String("apns-key-id", "", "APNS Key ID (from the Apple Developer account)")
 var apnsSandboxKeyFile = flag.String("apns-sandbox-key-file", "", "APNS sandbox token authentication key file (.p8)")
@@ -134,6 +149,12 @@ func main() {
 
 	logger := newLogger()
 	slog.SetDefault(logger)
+
+	flag.Visit(func(f *flag.Flag) {
+		if canonical, ok := deprecatedFlags[f.Name]; ok {
+			slog.Warn("Deprecated flag used", "flag", "-"+f.Name, "use", "-"+canonical)
+		}
+	})
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
