@@ -75,6 +75,18 @@ func newServiceLogger(service string) *slog.Logger {
 	)
 }
 
+func addWebPushService(s *server.Server, publicKey, privateKey string) {
+	web, err := webpush.NewWebPush(publicKey, privateKey, newServiceLogger("webpush"))
+	if err != nil {
+		slog.Error("Failed to setup WebPush service", "error", err)
+		os.Exit(1)
+	}
+	if err := s.AddService(web, *webPushWorkers, services.SquashConfig{}); err != nil {
+		slog.Error("Failed to add WebPush service", "error", err)
+		os.Exit(1)
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -165,25 +177,9 @@ func main() {
 			slog.Error("WebPush VAPID keys file must contain non-empty 'publicKey' and 'privateKey' values")
 			os.Exit(1)
 		}
-		web, err := webpush.NewWebPush(vapidKeys.PublicKey, vapidKeys.PrivateKey, newServiceLogger("webpush"))
-		if err != nil {
-			slog.Error("Failed to setup WebPush service", "error", err)
-			os.Exit(1)
-		}
-		if err := s.AddService(web, *webPushWorkers, services.SquashConfig{}); err != nil {
-			slog.Error("Failed to add WebPush service", "error", err)
-			os.Exit(1)
-		}
+		addWebPushService(s, vapidKeys.PublicKey, vapidKeys.PrivateKey)
 	} else if *webPushVAPIDPrivateKey != "" {
-		web, err := webpush.NewWebPush(*webPushVAPIDPublicKey, *webPushVAPIDPrivateKey, newServiceLogger("webpush"))
-		if err != nil {
-			slog.Error("Failed to setup WebPush service", "error", err)
-			os.Exit(1)
-		}
-		if err := s.AddService(web, *webPushWorkers, services.SquashConfig{}); err != nil {
-			slog.Error("Failed to add WebPush service", "error", err)
-			os.Exit(1)
-		}
+		addWebPushService(s, *webPushVAPIDPublicKey, *webPushVAPIDPrivateKey)
 	}
 
 	if *telegramBotToken != "" {
