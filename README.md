@@ -48,6 +48,16 @@ Usage:
     Usage of ./shove:
       -api-addr string
             API address to listen to (default ":8322")
+      -apns-key-file string
+            APNS token authentication key file (.p8)
+      -apns-key-id string
+            APNS Key ID (from the Apple Developer account)
+      -apns-sandbox-key-file string
+            APNS sandbox token authentication key file (.p8)
+      -apns-sandbox-key-id string
+            APNS sandbox Key ID (from the Apple Developer account)
+      -apns-team-id string
+            APNS Team ID (from the Apple Developer account)
       -apns-certificate-path string
             APNS certificate path
       -apns-sandbox-certificate-path string
@@ -104,6 +114,33 @@ Start the server:
 
 
 ### APNS
+
+Two authentication methods are supported. Token-based authentication is
+recommended: a single `.p8` auth key works for both the production and sandbox
+environments and, unlike certificates, does not expire (no yearly renewal).
+
+To obtain a token auth key: in the [Apple Developer](https://developer.apple.com/account/resources/authkeys/list)
+portal go to *Certificates, Identifiers & Profiles → Keys*, create a key with
+*Apple Push Notifications service (APNs)* enabled, and download the `.p8` (it can
+only be downloaded once). Note the *Key ID* shown for the key and your *Team ID*
+from the Membership page.
+
+Each environment is enabled by supplying its key file. A key configured for
+*Sandbox & Production* (the default, and all pre-2024 keys) works for both, so
+the same file and Key ID are used for each:
+
+    $ shove \
+        -apns-key-file /etc/shove/apns/AuthKey_ABCD1234.p8 \
+        -apns-key-id ABCD1234 \
+        -apns-sandbox-key-file /etc/shove/apns/AuthKey_ABCD1234.p8 \
+        -apns-sandbox-key-id ABCD1234 \
+        -apns-team-id XYZ1234567
+
+If you created environment-scoped keys, point each flag at its own `.p8` / Key ID.
+
+Alternatively, certificate-based authentication remains available via
+`-apns-certificate-path` / `-apns-sandbox-certificate-path`. Certificate and token
+authentication are mutually exclusive per environment.
 
 Push an APNS notification:
 

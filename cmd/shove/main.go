@@ -28,6 +28,11 @@ var apiAddr = flag.String("api-addr", ":8322", "API address to listen to")
 
 var apnsCertificate = flag.String("apns-certificate-path", "", "APNS certificate path")
 var apnsSandboxCertificate = flag.String("apns-sandbox-certificate-path", "", "APNS sandbox certificate path")
+var apnsKeyFile = flag.String("apns-key-file", "", "APNS token authentication key file (.p8)")
+var apnsKeyID = flag.String("apns-key-id", "", "APNS Key ID (from the Apple Developer account)")
+var apnsSandboxKeyFile = flag.String("apns-sandbox-key-file", "", "APNS sandbox token authentication key file (.p8)")
+var apnsSandboxKeyID = flag.String("apns-sandbox-key-id", "", "APNS sandbox Key ID (from the Apple Developer account)")
+var apnsTeamID = flag.String("apns-team-id", "", "APNS Team ID (from the Apple Developer account)")
 var apnsWorkers = flag.Int("apns-workers", 4, "The number of workers pushing APNS messages")
 
 var fcmCredentialsFile = flag.String("fcm-credentials-file", "", "FCM credentials file")
@@ -75,6 +80,43 @@ func newServiceLogger(service string) *slog.Logger {
 	)
 }
 
+func addAPNSService(s *server.Server, production bool) {
+	name := "apns"
+	certPath, keyFile, keyID := *apnsCertificate, *apnsKeyFile, *apnsKeyID
+	if !production {
+		name = "apns-sandbox"
+		certPath, keyFile, keyID = *apnsSandboxCertificate, *apnsSandboxKeyFile, *apnsSandboxKeyID
+	}
+	if certPath == "" && keyFile == "" {
+		return
+	}
+	if certPath != "" && keyFile != "" {
+		slog.Error("Cannot combine APNS certificate and token authentication", "service", name)
+		os.Exit(1)
+	}
+	var (
+		svc *apns.APNS
+		err error
+	)
+	if keyFile != "" {
+		if keyID == "" || *apnsTeamID == "" {
+			slog.Error("APNS token authentication requires a Key ID and -apns-team-id", "service", name)
+			os.Exit(1)
+		}
+		svc, err = apns.NewAPNSToken(keyFile, keyID, *apnsTeamID, production, newServiceLogger(name))
+	} else {
+		svc, err = apns.NewAPNS(certPath, production, newServiceLogger(name))
+	}
+	if err != nil {
+		slog.Error("Failed to setup APNS service", "service", name, "error", err)
+		os.Exit(1)
+	}
+	if err := s.AddService(svc, *apnsWorkers, services.SquashConfig{}); err != nil {
+		slog.Error("Failed to add APNS service", "service", name, "error", err)
+		os.Exit(1)
+	}
+}
+
 func addWebPushService(s *server.Server, publicKey, privateKey string) {
 	web, err := webpush.NewWebPush(publicKey, privateKey, newServiceLogger("webpush"))
 	if err != nil {
@@ -106,29 +148,8 @@ func main() {
 	}
 	s := server.NewServer(*apiAddr, qf)
 
-	if *apnsCertificate != "" {
-		apns, err := apns.NewAPNS(*apnsCertificate, true, newServiceLogger("apns"))
-		if err != nil {
-			slog.Error("Failed to setup APNS service", "error", err)
-			os.Exit(1)
-		}
-		if err := s.AddService(apns, *apnsWorkers, services.SquashConfig{}); err != nil {
-			slog.Error("Failed to add APNS service", "error", err)
-			os.Exit(1)
-		}
-	}
-
-	if *apnsSandboxCertificate != "" {
-		apns, err := apns.NewAPNS(*apnsSandboxCertificate, false, newServiceLogger("apns-sandbox"))
-		if err != nil {
-			slog.Error("Failed to setup APNS sandbox service", "error", err)
-			os.Exit(1)
-		}
-		if err := s.AddService(apns, *apnsWorkers, services.SquashConfig{}); err != nil {
-			slog.Error("Failed to add APNS sandbox service", "error", err)
-			os.Exit(1)
-		}
-	}
+	addAPNSService(s, true)
+	addAPNSService(s, false)
 
 	if *fcmCredentialsFile != "" {
 		fcm, err := fcm.NewFCM(*fcmCredentialsFile, newServiceLogger("fcm"))
