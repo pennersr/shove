@@ -1,8 +1,8 @@
 module codeberg.org/pennersr/shove
 
-go 1.21
+go 1.26.0
 
-toolchain go1.22.6
+toolchain go1.26.5
 
 require (
 	codeberg.org/pennersr/redq v0.0.0-20240908181154-b13bb619b69d
