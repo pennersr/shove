@@ -86,6 +86,8 @@ Usage:
             VAPID public key
       -webpush-vapid-public-key string
             VAPID public key
+      -webpush-vapid-keys-file string
+            VAPID keys file path
       -webpush-workers int
             The number of workers pushing Web messages (default 8)
 
@@ -97,7 +99,7 @@ Start the server:
         -queue-redis redis://redis:6379 \
         -fcm-credentials-file /etc/shove/fcm/credentials.json \
         -apns-certificate-path /etc/shove/apns/production/bundle.pem -apns-sandbox-certificate-path /etc/shove/apns/sandbox/bundle.pem \
-        -webpush-vapid-public-key=$VAPID_PUBLIC_KEY -webpush-vapid-private-key=$VAPID_PRIVATE_KEY \
+        -webpush-vapid-keys-file=/etc/shove/webpush/vapid-keys.json \
         -telegram-bot-token $TELEGRAM_BOT_TOKEN
 
 

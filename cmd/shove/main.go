@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"os"
 	"os/signal"
@@ -37,7 +38,8 @@ var redisURL = flag.String("queue-redis", "", "Use Redis queue (Redis URL)")
 var webhookWorkers = flag.Int("webhook-workers", 0, "The number of workers pushing Webhook messages")
 
 var webPushVAPIDPublicKey = flag.String("webpush-vapid-public-key", "", "VAPID public key")
-var webPushVAPIDPrivateKey = flag.String("webpush-vapid-private-key", "", "VAPID public key")
+var webPushVAPIDPrivateKey = flag.String("webpush-vapid-private-key", "", "VAPID private key")
+var webPushVAPIDKeysFile = flag.String("webpush-vapid-keys-file", "", "JSON file containing VAPID keys")
 var webPushWorkers = flag.Int("webpush-workers", 8, "The number of workers pushing Web messages")
 
 var telegramBotToken = flag.String("telegram-bot-token", "", "Telegram bot token")
@@ -140,7 +142,39 @@ func main() {
 		}
 	}
 
-	if *webPushVAPIDPrivateKey != "" {
+	if *webPushVAPIDKeysFile != "" {
+		if *webPushVAPIDPublicKey != "" || *webPushVAPIDPrivateKey != "" {
+			slog.Error("Cannot combine -webpush-vapid-keys-file with -webpush-vapid-public-key/-webpush-vapid-private-key")
+			os.Exit(1)
+		}
+		content, err := os.ReadFile(*webPushVAPIDKeysFile)
+		if err != nil {
+			slog.Error("Failed to read WebPush VAPID keys file", "error", err)
+			os.Exit(1)
+		}
+		var vapidKeys struct {
+			PublicKey  string `json:"publicKey"`
+			PrivateKey string `json:"privateKey"`
+		}
+		err = json.Unmarshal(content, &vapidKeys)
+		if err != nil {
+			slog.Error("Failed to unmarshal WebPush VAPID keys file, please check your JSON file contains 'publicKey' and 'privateKey' keys", "error", err)
+			os.Exit(1)
+		}
+		if vapidKeys.PublicKey == "" || vapidKeys.PrivateKey == "" {
+			slog.Error("WebPush VAPID keys file must contain non-empty 'publicKey' and 'privateKey' values")
+			os.Exit(1)
+		}
+		web, err := webpush.NewWebPush(vapidKeys.PublicKey, vapidKeys.PrivateKey, newServiceLogger("webpush"))
+		if err != nil {
+			slog.Error("Failed to setup WebPush service", "error", err)
+			os.Exit(1)
+		}
+		if err := s.AddService(web, *webPushWorkers, services.SquashConfig{}); err != nil {
+			slog.Error("Failed to add WebPush service", "error", err)
+			os.Exit(1)
+		}
+	} else if *webPushVAPIDPrivateKey != "" {
 		web, err := webpush.NewWebPush(*webPushVAPIDPublicKey, *webPushVAPIDPrivateKey, newServiceLogger("webpush"))
 		if err != nil {
 			slog.Error("Failed to setup WebPush service", "error", err)
