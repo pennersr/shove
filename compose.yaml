@@ -1,0 +1,25 @@
+services:
+  shove:
+    build:
+      context: .
+      target: final
+    container_name: shove
+    command:
+      [
+        "/bin/shove",
+        "-api-addr",
+        "0.0.0.0:8322",
+        "-queue-redis",
+        "redis://redis:6379",
+      ]
+    depends_on:
+      - redis
+    ports:
+      - 8322:8322
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    volumes:
+      - ./shove/redis/data:/data
+    ports:
+      - 6379:6379
