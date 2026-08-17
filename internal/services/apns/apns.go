@@ -112,6 +112,8 @@ func (apns *APNS) PushMessage(pclient services.PumpClient, smsg services.Service
 		sent = resp.Sent()
 		if resp.Reason == apns2.ReasonBadDeviceToken || resp.Reason == apns2.ReasonUnregistered {
 			fc.TokenInvalid(apns.ID(), notif.notification.DeviceToken)
+		} else if resp.Reason == apns2.ReasonTooManyRequests {
+			fc.TokenThrottled(apns.ID(), notif.notification.DeviceToken)
 		}
 		retry := resp.StatusCode >= 500
 		if sent {
