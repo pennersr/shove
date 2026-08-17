@@ -83,7 +83,8 @@ func (wp *WebPush) PushMessage(pclient services.PumpClient, smsg services.Servic
 		// reached a rate limit with a push service. The push service
 		// should include a 'Retry-After' header to indicate how long
 		// before another request can be made.
-		return services.PushStatusTempFail
+		fc.TokenThrottled(wp.ID(), msg.Token)
+		return services.PushStatusHardFail
 
 	case 400:
 		// 400 Invalid request. This generally means one of your headers is invalid or improperly formatted.
