@@ -8,6 +8,7 @@ import (
 // FeedbackCollector ...
 type FeedbackCollector interface {
 	TokenInvalid(serviceID, token string)
+	TokenThrottled(serviceID, token string)
 	ReplaceToken(serviceID, token, replacement string)
 	CountPush(serviceID string, success bool, duration time.Duration)
 }

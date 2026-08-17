@@ -6,6 +6,12 @@ import (
 	"net/http"
 )
 
+const (
+	tokenFeedbackReasonInvalid   = "invalid"
+	tokenFeedbackReasonThrottled = "throttled"
+	tokenFeedbackReasonReplaced  = "replaced"
+)
+
 type tokenFeedback struct {
 	Service     string `json:"service"`
 	Token       string `json:"token"`
@@ -36,15 +42,23 @@ func (s *Server) handleFeedback(w http.ResponseWriter, r *http.Request) {
 // TokenInvalid ...
 func (s *Server) TokenInvalid(serviceID, token string) {
 	s.feedbackLock.Lock()
-	s.feedback = append(s.feedback, tokenFeedback{serviceID, token, "", "invalid"})
+	s.feedback = append(s.feedback, tokenFeedback{serviceID, token, "", tokenFeedbackReasonInvalid})
 	s.feedbackLock.Unlock()
 	slog.Info("Invalid token", "service", serviceID, "token", token)
+}
+
+// TokenThrottled ...
+func (s *Server) TokenThrottled(serviceID, token string) {
+	s.feedbackLock.Lock()
+	s.feedback = append(s.feedback, tokenFeedback{serviceID, token, "", tokenFeedbackReasonThrottled})
+	s.feedbackLock.Unlock()
+	slog.Info("Throttled token", "service", serviceID, "token", token)
 }
 
 // ReplaceToken ...
 func (s *Server) ReplaceToken(serviceID, token, replacement string) {
 	s.feedbackLock.Lock()
-	s.feedback = append(s.feedback, tokenFeedback{serviceID, token, replacement, "replaced"})
+	s.feedback = append(s.feedback, tokenFeedback{serviceID, token, replacement, tokenFeedbackReasonReplaced})
 	s.feedbackLock.Unlock()
 	slog.Info("Token replaced", "service", serviceID)
 }

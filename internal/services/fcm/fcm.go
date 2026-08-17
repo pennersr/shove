@@ -72,14 +72,15 @@ func (fcm *FCM) PushMessage(pclient services.PumpClient, smsg services.ServiceMe
 	if err != nil {
 		if messaging.IsUnregistered(err) {
 			fc.TokenInvalid(fcm.ID(), msg.Message.Token)
-		} else {
+		} else if messaging.IsQuotaExceeded(err) {
 			// Tried to extract and inspect the response in case of 429:
 			//
 			// resp := errorutils.HTTPResponse(err);
 			//
 			// An example response is listed below. That is
 			// insufficient to tell whether or not the quota issue
-			// is on the token/topic/project level :(
+			// is on the token/topic/project level :( So we simply
+			// report it against the token and let the client decide.
 			//
 			//   {
 			//     "error": {
@@ -94,6 +95,8 @@ func (fcm *FCM) PushMessage(pclient services.PumpClient, smsg services.ServiceMe
 			//       ]
 			//     }
 			//   }
+			fc.TokenThrottled(fcm.ID(), msg.Message.Token)
+		} else {
 			fcm.log.Error("Posting failed", "error", err)
 		}
 		return services.PushStatusHardFail

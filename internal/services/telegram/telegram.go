@@ -94,8 +94,8 @@ func (tg *TelegramService) pushMessage(client *http.Client, method string, chatI
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 429 {
-		tg.log.Error("Throttled, too many requests", "status", 429)
-		return services.PushStatusTempFail
+		fc.TokenThrottled(tg.ID(), chatID)
+		return services.PushStatusHardFail
 	}
 
 	var respData struct {
