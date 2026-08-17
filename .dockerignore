@@ -1,0 +1,18 @@
+# VCS and tooling
+.git
+.gitignore
+
+# Secrets / credentials
+*.p8
+*.pem
+*-firebase.json
+
+# Editor/backup cruft
+*~
+*.eml
+NOTES.org
+
+# Build artifacts
+shove
+cmd/shove/shove
+tmp/
