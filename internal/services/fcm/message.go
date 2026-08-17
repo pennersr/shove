@@ -4,7 +4,7 @@ import (
 	"codeberg.org/pennersr/shove/internal/services"
 	"encoding/json"
 	"errors"
-	"firebase.google.com/go/messaging"
+	"firebase.google.com/go/v4/messaging"
 )
 
 type fcmMessage struct {
@@ -23,6 +23,10 @@ func (fcm *FCM) ConvertMessage(data []byte) (smsg services.ServiceMessage, err e
 	if msg.Message == nil {
 		return nil, errors.New("message key missing")
 	}
+	// Token is deprecated in favor of Fid (Firebase Installation ID), but the
+	// two are distinct identifiers and clients still send registration tokens.
+	// Both remain supported, so we keep Token intentionally.
+	// See: https://firebase.google.com/docs/cloud-messaging/send/admin-sdk
 	if msg.Message.Token == "" {
 		return nil, errors.New("no token specified")
 	}

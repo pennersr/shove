@@ -3,11 +3,10 @@ package fcm
 import (
 	"codeberg.org/pennersr/shove/internal/services"
 	"context"
-	firebase "firebase.google.com/go"
-	"firebase.google.com/go/messaging"
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/messaging"
 	"golang.org/x/exp/slog"
 	"google.golang.org/api/option"
-	"strings"
 	"time"
 )
 
@@ -71,10 +70,30 @@ func (fcm *FCM) PushMessage(pclient services.PumpClient, smsg services.ServiceMe
 	}()
 	fcm.log.Info("Pushed", "duration", duration)
 	if err != nil {
-		// TODO: Isn't there a better way?
-		if strings.Contains(err.Error(), "registration-token-not-registered") {
+		if messaging.IsUnregistered(err) {
 			fc.TokenInvalid(fcm.ID(), msg.Message.Token)
 		} else {
+			// Tried to extract and inspect the response in case of 429:
+			//
+			// resp := errorutils.HTTPResponse(err);
+			//
+			// An example response is listed below. That is
+			// insufficient to tell whether or not the quota issue
+			// is on the token/topic/project level :(
+			//
+			//   {
+			//     "error": {
+			//       "code": 429,
+			//       "message": "Quota exceeded.",
+			//       "status": "RESOURCE_EXHAUSTED",
+			//       "details": [
+			//         {
+			//           "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError",
+			//           "errorCode": "QUOTA_EXCEEDED"
+			//         }
+			//       ]
+			//     }
+			//   }
 			fcm.log.Error("Posting failed", "error", err)
 		}
 		return services.PushStatusHardFail
